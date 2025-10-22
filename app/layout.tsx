@@ -7,8 +7,8 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Jupiter Lend - Flash Loan",
-  description: "Execute flash loans on Jupiter Lend - deposit and borrow in a single transaction",
+  title: "Hachimedes",
+  description: "Give me a lever, and I can move Jupiter - One-click leverage and deleverage operations on Solana",
 };
 
 export default function RootLayout({
