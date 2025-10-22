@@ -115,7 +115,7 @@ export async function buildDeleverageDirectOperate(params: DeleverageDirectOpera
       signer: userPublicKey,
       colAmount: new BN(0),
       debtAmount: new BN(-repayAmountRaw),
-      recipient: null,
+      recipient: undefined,
       positionOwner: undefined,
     });
 
