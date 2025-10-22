@@ -1,142 +1,144 @@
-# 哈基米德 (Hachimedes)
+# Hachimedes
 
-> "给我一个杠杆，我能撑起整个木星。" —— 阿基米德（改编）
+[中文文档](./README.zh-CN.md) | English
 
-基于 Solana 的 Jupiter Lend 闪电贷接口，支持一键加杠杆和去杠杆操作。
+> "Give me a lever, and I can move Jupiter." - Archimedes (adapted)
 
-## ✨ 核心功能
+A powerful Flash Loan interface for Jupiter Lend on Solana, enabling one-click leverage and deleverage operations.
 
-- 🚀 **一键加杠杆/去杠杆**：单笔交易完成复杂的 DeFi 操作
-- ⚡ **闪电贷集成**：利用 Jupiter Lend 的闪电贷功能
-- 🔄 **自动兑换**：通过 Jupiter 聚合器自动兑换代币
-- 🎯 **仓位管理**：轻松管理你的借贷仓位
-- 🔍 **NFT 仓位发现**：自动发现你的仓位（支持 10 万个仓位 ID）
-- 📊 **实时 LTV 显示**：实时监控你的贷款价值比
+## ✨ Features
 
-## 🏦 支持的资金池
+- 🚀 **One-Click Leverage/Deleverage**: Execute complex DeFi operations in a single transaction
+- ⚡ **Flash Loan Integration**: Utilize Jupiter Lend's flash loan capabilities
+- 🔄 **Auto Swap**: Automatically swap tokens via Jupiter Aggregator
+- 🎯 **Position Management**: Easily manage your lending positions
+- 🔍 **NFT-based Position Discovery**: Automatically find your positions (supports up to 100,000 position IDs)
+- 📊 **Real-time LTV Display**: Monitor your loan-to-value ratio in real-time
 
-- JLP/USDC (资金池 8)
-- JLP/USDG (资金池 10)
-- JLP/USDS (资金池 34) - 默认
+## 🏦 Supported Vaults
 
-## 🔧 工作原理
+- JLP/USDC (Vault 8)
+- JLP/USDG (Vault 10)
+- JLP/USDS (Vault 34) - Default
 
-### 加杠杆
+## 🔧 How It Works
 
-1. 从 Jupiter Lend 闪电借入 USDS
-2. 通过 Jupiter 聚合器将 USDS → JLP
-3. 存入 JLP 作为抵押品 + 借出 USDS
-4. 偿还闪电贷
+### Leverage
 
-**一切都在单笔原子交易中完成！**
+1. Flash Borrow USDS from Jupiter Lend
+2. Swap USDS → JLP via Jupiter Aggregator
+3. Deposit JLP as collateral + Borrow USDS
+4. Repay Flash Loan
 
-### 去杠杆
+**All in one atomic transaction!**
 
-1. 从 Jupiter Lend 闪电借入 JLP
-2. 通过 Jupiter 聚合器将 JLP → USDS
-3. 偿还债务 + 提取 JLP 抵押品
-4. 偿还闪电贷
+### Deleverage
 
-**一切都在单笔原子交易中完成！**
+1. Flash Borrow JLP from Jupiter Lend
+2. Swap JLP → USDS via Jupiter Aggregator
+3. Repay debt + Withdraw JLP collateral
+4. Repay Flash Loan
 
-## 🛠 技术栈
+**All in one atomic transaction!**
 
-- **框架**: Next.js 14 + React
-- **区块链**: Solana
-- **钱包**: Solana Wallet Adapter
-- **DeFi 协议**: Jupiter Lend SDK
-- **DEX 聚合器**: Jupiter Swap API
+## 🛠 Tech Stack
+
+- **Framework**: Next.js 14 + React
+- **Blockchain**: Solana
+- **Wallet**: Solana Wallet Adapter
+- **DeFi Protocol**: Jupiter Lend SDK
+- **DEX Aggregator**: Jupiter Swap API
 - **UI**: Tailwind CSS + shadcn/ui
-- **语言**: TypeScript
+- **Language**: TypeScript
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 1. 克隆仓库
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/giraphant/Hachimedes.git
 cd Hachimedes
 ```
 
-### 2. 安装依赖
+### 2. Install dependencies
 
 ```bash
 npm install
 ```
 
-### 3. 配置环境变量
+### 3. Configure environment variables
 
 ```bash
 cp .env.local.example .env.local
 ```
 
-编辑 `.env.local` 并添加你的 RPC 端点：
+Edit `.env.local` and add your RPC endpoint:
 
 ```env
 NEXT_PUBLIC_RPC_URL=https://api.mainnet-beta.solana.com
-# 或使用付费 RPC 以获得更好的性能：
+# Or use a paid RPC for better performance:
 # NEXT_PUBLIC_RPC_URL=https://mainnet.helius-rpc.com/?api-key=YOUR_API_KEY
 ```
 
-### 4. 启动开发服务器
+### 4. Run development server
 
 ```bash
 npm run dev
 ```
 
-### 5. 在浏览器中打开
+### 5. Open in browser
 
 ```
 http://localhost:28848
 ```
 
-## 🔍 仓位发现系统
+## 🔍 Position Discovery System
 
-应用内置智能 NFT 仓位发现系统：
+The app features an intelligent NFT-based position discovery system:
 
-- **快速搜索**：大多数仓位在 1 秒内找到（0-1,000 范围）
-- **深度搜索**：支持最多 10 万个仓位 ID
-- **批量策略**：分批搜索以保持 UI 响应性
-- **进度反馈**：实时加载指示器
+- **Quick Search**: Most positions found in < 1 second (0-1,000 range)
+- **Deep Search**: Supports position IDs up to 100,000
+- **Batch Strategy**: Searches in batches to maintain UI responsiveness
+- **Progress Feedback**: Real-time loading indicators
 
-**性能表现**：
-- 3 位数仓位 ID (0-999)：~300ms
-- 4 位数仓位 ID (1000-9999)：~3s
-- 5 位数仓位 ID (10000-99999)：~20-30s
+**Performance**:
+- 3-digit Position IDs (0-999): ~300ms
+- 4-digit Position IDs (1000-9999): ~3s
+- 5-digit Position IDs (10000-99999): ~20-30s
 
-## 📜 可用命令
+## 📜 Scripts
 
 ```bash
-npm run dev     # 启动开发服务器（端口 28848）
-npm run build   # 构建生产版本
-npm run start   # 启动生产服务器（端口 28848）
-npm run lint    # 运行 ESLint
+npm run dev     # Start development server (port 28848)
+npm run build   # Build for production
+npm run start   # Start production server (port 28848)
+npm run lint    # Run ESLint
 ```
 
-## 📚 文档
+## 📚 Documentation
 
-- [NFT 仓位发现](./docs/POSITION_NFT_DISCOVERY.md)
-- [仓位搜索优化](./docs/POSITION_SEARCH_OPTIMIZATION.md)
-- [UX 加载修复](./docs/UX_FIX_LOADING.md)
-- [新增资金池](./docs/VAULTS_ADDED.md)
+- [Position NFT Discovery](./docs/POSITION_NFT_DISCOVERY.md)
+- [Position Search Optimization](./docs/POSITION_SEARCH_OPTIMIZATION.md)
+- [UX Loading Fix](./docs/UX_FIX_LOADING.md)
+- [Vaults Added](./docs/VAULTS_ADDED.md)
 
-## 🚨 部署说明
+## 🚨 Deployment
 
-### Coolify 部署
+### Coolify Deployment
 
-1. **仓库地址**：`https://github.com/giraphant/Hachimedes`
-2. **默认端口**：`28848`
-3. **环境变量**：
+1. **Repository**: `https://github.com/giraphant/Hachimedes`
+2. **Default Port**: `28848`
+3. **Environment Variables**:
    ```
-   NEXT_PUBLIC_RPC_URL=你的RPC地址
+   NEXT_PUBLIC_RPC_URL=your_rpc_url
    NEXT_PUBLIC_NETWORK=mainnet-beta
    ```
-4. **构建命令**：`npm run build`
-5. **启动命令**：`npm start`
+4. **Build Command**: `npm run build`
+5. **Start Command**: `npm start`
 
-### 反向代理配置
+### Reverse Proxy Configuration
 
-如果你使用 Nginx 或其他反向代理，请将流量转发到端口 `28848`：
+If you're using Nginx or other reverse proxy, forward traffic to port `28848`:
 
 ```nginx
 location / {
@@ -149,29 +151,27 @@ location / {
 }
 ```
 
-## ⚠️ 安全提示
+## ⚠️ Security
 
-- ⚠️ 这是实验性软件，使用风险自负
-- ⚠️ 签名前务必验证交易内容
-- ⚠️ 切勿分享你的私钥或助记词
-- ⚠️ 建议先用小额资金测试
+- ⚠️ This is experimental software. Use at your own risk.
+- ⚠️ Always verify transactions before signing
+- ⚠️ Never share your private keys or seed phrases
+- ⚠️ Start with small amounts for testing
 
-## 🤝 贡献
+## 🤝 Contributing
 
-欢迎贡献代码！请随时提交 Pull Request。
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 📄 开源协议
+## 📄 License
 
 MIT
 
-## 🙏 致谢
+## 🙏 Acknowledgments
 
-- [Jupiter](https://jup.ag/) - 提供强大的 DeFi 协议
-- [Solana](https://solana.com/) - 提供高性能区块链
-- [shadcn/ui](https://ui.shadcn.com/) - 提供精美的 UI 组件
+- [Jupiter](https://jup.ag/) - For the amazing DeFi protocols
+- [Solana](https://solana.com/) - For the high-performance blockchain
+- [shadcn/ui](https://ui.shadcn.com/) - For the beautiful UI components
 
 ---
 
-**为 Solana DeFi 社区倾情打造**
-
-<sub>Built with ❤️ by the community</sub>
+**Built with ❤️ for the Solana DeFi community**
