@@ -147,8 +147,8 @@ export async function buildDeleverageDirectOperate(params: DeleverageDirectOpera
     const addressLookupTableAccounts: any[] = [];
     const seenKeys = new Set<string>();
 
-    if (operateContext.addressLookupTableAccounts) {
-      for (const lut of operateContext.addressLookupTableAccounts) {
+    if (operateResult.addressLookupTableAccounts) {
+      for (const lut of operateResult.addressLookupTableAccounts) {
         const key = lut.key.toString();
         if (!seenKeys.has(key)) {
           seenKeys.add(key);

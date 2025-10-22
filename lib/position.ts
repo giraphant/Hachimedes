@@ -72,7 +72,6 @@ export async function fetchPositionInfo(
       connection,
       vaultId,
       positionId,
-      owner,
     });
 
     if (!position) {

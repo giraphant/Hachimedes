@@ -13,7 +13,7 @@ export async function findUserPositions(
   console.log(`Searching for positions in vault ${vaultId} for user ${userPublicKey.toString()}...`);
 
   try {
-    const program = getVaultsProgram(connection);
+    const program = getVaultsProgram({ connection, signer: userPublicKey });
 
     // 使用 getProgramAccounts 查询所有 position accounts
     // 过滤条件：vault_id 匹配 + owner 匹配
@@ -36,8 +36,8 @@ export async function findUserPositions(
 
     // 从 position accounts 中提取 position IDs
     const userPositions = positions.map((pos) => {
-      // position ID 存储在 account data 中
-      return pos.account.id; // 假设字段名为 id
+      // position ID 存储在 account data 中的 nftId 字段
+      return pos.account.nftId;
     });
 
     console.log(`Position IDs:`, userPositions);
@@ -49,24 +49,4 @@ export async function findUserPositions(
   }
 }
 
-/**
- * 快速检查单个 position 是否属于用户
- */
-export async function checkPositionOwnership(
-  connection: Connection,
-  vaultId: number,
-  positionId: number,
-  userPublicKey: PublicKey
-): Promise<boolean> {
-  try {
-    const owner = await getAccountOwner({
-      vaultId,
-      positionId,
-      connection,
-    });
-
-    return owner.equals(userPublicKey);
-  } catch {
-    return false;
-  }
-}
+// checkPositionOwnership function removed - not used anywhere in the codebase
