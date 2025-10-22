@@ -398,7 +398,7 @@ export function FlashLoanInterface() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Zap className="h-6 w-6 text-green-500" />
-              <h1 className="text-2xl font-bold text-white">Jupiter Lend Flash Loan</h1>
+              <h1 className="text-2xl font-bold text-white">Hachimedes</h1>
             </div>
             <WalletButton />
           </div>
