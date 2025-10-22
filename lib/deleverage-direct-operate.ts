@@ -1,6 +1,6 @@
 import { Connection, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from '@solana/web3.js';
 import { getFlashBorrowIx, getFlashPaybackIx } from '@jup-ag/lend/flashloan';
-import { getVaultsProgram, getOperateContext } from '@jup-ag/lend/borrow';
+import { getOperateIx } from '@jup-ag/lend/borrow';
 import { createJupiterApiClient } from '@jup-ag/api';
 import BN from 'bn.js';
 
@@ -100,74 +100,25 @@ export async function buildDeleverageDirectOperate(params: DeleverageDirectOpera
       swapInstructions.push(deserializeInstruction(swapResult.cleanupInstruction));
     }
 
-    // Step 3: 直接构建 Operate 指令（使用 Anchor Program）
-    console.log('\n[3/4] Building Operate instruction (direct Anchor call)...');
+    // Step 3: 构建 Operate 指令（使用 SDK）
+    console.log('\n[3/4] Building Operate instruction...');
 
-    const program = getVaultsProgram({ connection, signer: userPublicKey });
     const repayAmountRaw = parseInt(quoteResponse.outAmount);
 
-    // 获取 operate 所需的所有账户
-    const operateContext = await getOperateContext({
+    // 使用 SDK 的 getOperateIx 函数
+    const operateResult = await getOperateIx({
       vaultId,
       positionId,
-      program,
+      colAmount: new BN(0), // 不改变抵押品
+      debtAmount: new BN(-repayAmountRaw), // 还款（负数）
       connection,
       signer: userPublicKey,
-      colAmount: new BN(0),
-      debtAmount: new BN(-repayAmountRaw),
-      recipient: undefined,
-      positionOwner: undefined,
+      recipient: userPublicKey,
+      positionOwner: userPublicKey,
     });
 
-    console.log('Operate context obtained');
-    console.log('Remaining accounts indices:', operateContext.remainingAccountsIndices);
-
-    // 使用 Anchor 直接构建 operate 指令
-    const operateIx = await program.methods
-      .operate(
-        new BN(0), // newCol: 不改变抵押品
-        new BN(-repayAmountRaw), // newDebt: 还款（负数）
-        null, // transferType
-        Buffer.from(operateContext.remainingAccountsIndices) // remaining accounts
-      )
-      .accounts({
-        signer: operateContext.accounts.signer,
-        signerSupplyTokenAccount: operateContext.accounts.signerSupplyTokenAccount,
-        signerBorrowTokenAccount: operateContext.accounts.signerBorrowTokenAccount,
-        recipient: operateContext.accounts.recipient,
-        recipientBorrowTokenAccount: operateContext.accounts.recipientBorrowTokenAccount,
-        recipientSupplyTokenAccount: operateContext.accounts.recipientSupplyTokenAccount,
-        vaultConfig: operateContext.accounts.vaultConfig,
-        vaultState: operateContext.accounts.vaultState,
-        supplyToken: operateContext.accounts.supplyToken,
-        borrowToken: operateContext.accounts.borrowToken,
-        supplyTokenReservesLiquidity: operateContext.accounts.supplyTokenReservesLiquidity,
-        borrowTokenReservesLiquidity: operateContext.accounts.borrowTokenReservesLiquidity,
-        vaultSupplyPositionOnLiquidity: operateContext.accounts.vaultSupplyPositionOnLiquidity,
-        vaultBorrowPositionOnLiquidity: operateContext.accounts.vaultBorrowPositionOnLiquidity,
-        supplyRateModel: operateContext.accounts.supplyRateModel,
-        borrowRateModel: operateContext.accounts.borrowRateModel,
-        liquidity: operateContext.accounts.liquidity,
-        liquidityProgram: operateContext.accounts.liquidityProgram,
-        vaultSupplyTokenAccount: operateContext.accounts.vaultSupplyTokenAccount,
-        vaultBorrowTokenAccount: operateContext.accounts.vaultBorrowTokenAccount,
-        oracle: operateContext.accounts.oracle,
-        oracleProgram: operateContext.accounts.oracleProgram,
-        position: operateContext.accounts.position,
-        positionTokenAccount: operateContext.accounts.positionTokenAccount,
-        currentPositionTick: operateContext.accounts.currentPositionTick,
-        finalPositionTick: operateContext.accounts.finalPositionTick,
-        currentPositionTickId: operateContext.accounts.currentPositionTickId,
-        finalPositionTickId: operateContext.accounts.finalPositionTickId,
-        newBranch: operateContext.accounts.newBranch,
-        supplyTokenProgram: operateContext.accounts.supplyTokenProgram,
-        borrowTokenProgram: operateContext.accounts.borrowTokenProgram,
-        systemProgram: operateContext.accounts.systemProgram,
-      })
-      .remainingAccounts(operateContext.remainingAccounts)
-      .instruction();
-
-    console.log('✓ Operate instruction built (single instruction, CPI handled internally)');
+    const operateIx = operateResult.ixs[0]; // 取第一个指令
+    console.log('✓ Operate instruction built');
 
     // Step 4: Flash Payback
     console.log('\n[4/4] Building Flash Payback...');
