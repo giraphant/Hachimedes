@@ -450,10 +450,10 @@ export function FlashLoanInterface() {
           /* 已连接钱包 - 左右分栏布局 */
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* 左侧：Position 状态面板 */}
+              {/* 左侧：仓位状态面板 */}
               <Card className="bg-slate-900/50 border-slate-800">
                 <CardHeader>
-                  <CardTitle className="text-white">📊 Position 状态</CardTitle>
+                  <CardTitle className="text-white">📊 仓位状态</CardTitle>
                   <CardDescription>当前仓位信息</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -633,12 +633,8 @@ export function FlashLoanInterface() {
               {/* 右侧：操作面板 */}
               <Card className="bg-slate-900/50 border-slate-800">
                 <CardHeader>
-                  <CardTitle className="text-white">⚡ Flash Loan 操作</CardTitle>
-                  <CardDescription>
-                    {operationType === 'deleverageSwap'
-                      ? '去杠杆：Flash Borrow → Swap → 还债 + 取出抵押品'
-                      : '加杠杆：Flash Borrow → Swap → 存入 + 借款'}
-                  </CardDescription>
+                  <CardTitle className="text-white">⚡ 杠杆操作</CardTitle>
+                  <CardDescription>选择操作类型并输入金额</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
               {/* 2️⃣ Operation Type Selector - 选择要做什么 */}
@@ -735,12 +731,6 @@ export function FlashLoanInterface() {
                       <span>{maxAmount > 0 ? maxAmount.toFixed(2) : '0.00'}</span>
                     </div>
                   </div>
-
-                  <p className="text-xs text-slate-500">
-                    {operationType === 'leverageSwap'
-                      ? '将 Flash Borrow USDS → Swap 成 JLP → 存入抵押并借出 USDS → 还回 Flash Loan'
-                      : '将 Flash Borrow JLP → Swap 成 USDS → 还债并取出 JLP → 还回 Flash Loan'}
-                  </p>
                 </div>
 
                 {/* 预测结果 */}
