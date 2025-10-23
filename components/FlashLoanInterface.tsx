@@ -564,10 +564,8 @@ export function FlashLoanInterface() {
 
                           {/* 区间说明 */}
                           <div className="flex justify-between text-xs text-slate-500">
-                            <span>0%</span>
-                            <span className="text-yellow-500">70%</span>
-                            <span className="text-orange-500">82%</span>
-                            <span className="text-red-500">{vaultConfig.liquidationLtv}%</span>
+                            <span>{positionInfo.ltv.toFixed(1)}%</span>
+                            <span>Max: L.T. {vaultConfig.liquidationLtv}%</span>
                           </div>
                         </div>
                       )}
