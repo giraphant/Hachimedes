@@ -1,0 +1,30 @@
+# Git files
+.git
+.gitignore
+
+# Node modules (will be reinstalled)
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env*.local
+
+# Development files
+*.log
+.DS_Store
+
+# Build outputs
+.next/
+out/
+dist/
+
+# TypeScript build info (should be regenerated)
+tsconfig.tsbuildinfo
+
+# Documentation
+README.md
+docs/
+
+# Testing
+coverage/
