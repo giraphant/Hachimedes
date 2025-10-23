@@ -406,60 +406,61 @@ export function FlashLoanInterface() {
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-2xl mx-auto">
-          {/* Flash Loan Card */}
-          <Card className="bg-slate-900/50 border-slate-800">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                Flash Loan 闪电贷操作
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-slate-400 hover:text-slate-300 cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-sm bg-slate-900 border-slate-700 p-4" side="bottom">
-                      <div className="space-y-2 text-sm">
-                        <div>
-                          <p className="font-semibold text-blue-400 mb-1">Vault {vaultId}: {vaultConfig.name}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-slate-200">Leverage</p>
-                          <p className="text-slate-400 text-xs">在单个交易中同时存入 JLP 抵押品并借出 USDS，最大化资金效率。</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-slate-200">Deleverage</p>
-                          <p className="text-slate-400 text-xs">在单个交易中同时还款 USDS 并取出 JLP 抵押品，降低杠杆倍数。</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-slate-200">Swap</p>
-                          <p className="text-slate-400 text-xs">通过 Jupiter Swap 交换代币，自动寻找最佳路由和价格。</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-slate-200">Deleverage + Swap</p>
-                          <p className="text-slate-400 text-xs">一键去杠杆 - 取出抵押品 → 自动 Swap → 还款，三合一原子操作。</p>
-                        </div>
-                        <div className="pt-2 border-t border-slate-700">
-                          <p className="text-xs text-yellow-400">⚠️ 请确保钱包有足够的代币余额和 SOL 支付交易费</p>
-                        </div>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </CardTitle>
-              <CardDescription>
-                {operationType === 'deleverageSwap'
-                  ? '去杠杆：Flash Borrow JLP → Swap 成 USDS → 还债 + 取出抵押品 → Flash Payback'
-                  : '加杠杆：Flash Borrow USDS → Swap 成 JLP → 存入 + 借款 → Flash Payback'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* 1️⃣ Position Overview - 最重要的信息 */}
-              {publicKey ? (
-                <div className="p-5 rounded-xl bg-gradient-to-br from-blue-950/30 to-slate-950/50 border-2 border-blue-900/50">
+      <div className="container mx-auto px-4 py-8">
+        {!publicKey ? (
+          /* 未连接钱包 - 欢迎页面 */
+          <div className="max-w-3xl mx-auto">
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardContent className="p-12 text-center space-y-6">
+                <div className="flex justify-center">
+                  <Zap className="h-16 w-16 text-green-500" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-bold text-white">
+                    给我一个杠杆，我能撬动整个木星
+                  </h2>
+                  <p className="text-slate-400 text-lg">
+                    一键闪电贷操作 · 单笔交易完成加/去杠杆 · 安全高效
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6">
+                  <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
+                    <div className="text-3xl mb-2">⚡</div>
+                    <div className="font-semibold text-white mb-1">Flash Loan</div>
+                    <div className="text-xs text-slate-400">零成本借贷</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
+                    <div className="text-3xl mb-2">🔄</div>
+                    <div className="font-semibold text-white mb-1">自动 Swap</div>
+                    <div className="text-xs text-slate-400">Jupiter 聚合</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
+                    <div className="text-3xl mb-2">🎯</div>
+                    <div className="font-semibold text-white mb-1">一键完成</div>
+                    <div className="text-xs text-slate-400">原子操作</div>
+                  </div>
+                </div>
+                <div className="pt-6">
+                  <p className="text-slate-500 mb-4">请先连接钱包开始使用</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          /* 已连接钱包 - 左右分栏布局 */
+          <div className="max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* 左侧：Position 状态面板 */}
+              <Card className="bg-slate-900/50 border-slate-800">
+                <CardHeader>
+                  <CardTitle className="text-white">📊 Position 状态</CardTitle>
+                  <CardDescription>当前仓位信息</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   {/* Vault 选择 + Position ID 输入 */}
-                  <div className="space-y-3 mb-4">
-                    <div className="flex items-center gap-2">
+                  <div className="space-y-3">
+                    <Label className="text-slate-300 text-sm">选择 Vault & Position</Label>
+                    <div className="flex flex-wrap items-center gap-2">
                       <Select value={vaultId.toString()} onValueChange={(val) => setVaultId(parseInt(val))}>
                         <SelectTrigger className="w-auto bg-slate-900/70 border-slate-700 text-sm">
                           <SelectValue />
@@ -602,13 +603,20 @@ export function FlashLoanInterface() {
                       </p>
                     </div>
                   )}
-                </div>
-              ) : (
-                <div className="p-6 rounded-xl bg-slate-950/50 border border-slate-800 text-center">
-                  <p className="text-slate-400">请先连接钱包</p>
-                </div>
-              )}
+                </CardContent>
+              </Card>
 
+              {/* 右侧：操作面板 */}
+              <Card className="bg-slate-900/50 border-slate-800">
+                <CardHeader>
+                  <CardTitle className="text-white">⚡ Flash Loan 操作</CardTitle>
+                  <CardDescription>
+                    {operationType === 'deleverageSwap'
+                      ? '去杠杆：Flash Borrow → Swap → 还债 + 取出抵押品'
+                      : '加杠杆：Flash Borrow → Swap → 存入 + 借款'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
               {/* 2️⃣ Operation Type Selector - 选择要做什么 */}
               <div className="space-y-3">
                 <Label className="text-slate-300 text-sm">选择操作</Label>
@@ -829,48 +837,11 @@ export function FlashLoanInterface() {
                   </ul>
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          {/* Removed Stats Cards - info already displayed above */}
-          <div className="hidden">
-            <Card className="bg-slate-900/50 border-slate-800">
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-sm text-slate-400">当前 Vault</p>
-                  <p className="text-2xl font-bold text-cyan-500">#{vaultConfig.id}</p>
-                  <p className="text-xs text-slate-500 mt-1">{vaultConfig.name}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-slate-900/50 border-slate-800">
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-sm text-slate-400">最大 LTV</p>
-                  <p className="text-2xl font-bold text-green-500">{vaultConfig.maxLtv}%</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-slate-900/50 border-slate-800">
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-sm text-slate-400">单笔交易</p>
-                  <p className="text-2xl font-bold text-blue-500">1 TX</p>
-                  <p className="text-xs text-slate-500 mt-1">原子操作</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-slate-900/50 border-slate-800">
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-sm text-slate-400">可用 Vault</p>
-                  <p className="text-2xl font-bold text-purple-500">{getAvailableVaults().length}</p>
-                  <p className="text-xs text-slate-500 mt-1">更多即将上线</p>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Position Manage Dialog */}
