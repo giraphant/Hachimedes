@@ -237,14 +237,18 @@ export function FlashLoanInterface() {
     const currentPrice = currentDebt / (currentCollateral * positionInfo.ltv / 100);
 
     if (operationType === 'leverageSwap') {
-      // Leverage: 最大可借 USDS = 不超过 maxLtv 的最大债务
-      const maxDebt = currentCollateral * currentPrice * vaultConfig.maxLtv / 100;
-      return Math.max(0, maxDebt - currentDebt);
+      // 加杠杆：借 X USDS -> swap 成 JLP -> 存入抵押品 -> 借 X USDS 还闪电贷
+      // 约束：新LTV = (currentDebt + X) / ((currentCollateral + X/price) × price) ≤ maxLtv
+      // 推导：X ≤ (maxLtv% × currentCollateral × price - currentDebt) / (1 - maxLtv%)
+      const maxLtvRatio = vaultConfig.maxLtv / 100;
+      const numerator = maxLtvRatio * currentCollateral * currentPrice - currentDebt;
+      const denominator = 1 - maxLtvRatio;
+      return Math.max(0, numerator / denominator);
     } else if (operationType === 'deleverageSwap') {
-      // Deleverage: 最大可取 JLP = 不超过 maxLtv 的最大可取抵押品
+      // 去杠杆：借 X JLP -> swap 成 USDS -> 还债 -> 取出 X JLP 还闪电贷
+      // 约束：X ≤ min(currentCollateral, currentDebt / price)
       if (currentDebt === 0) return currentCollateral;
-      const minCollateralNeeded = currentDebt / (currentPrice * vaultConfig.maxLtv / 100);
-      return Math.max(0, currentCollateral - minCollateralNeeded);
+      return Math.min(currentCollateral, currentDebt / currentPrice);
     }
 
     return 0;
