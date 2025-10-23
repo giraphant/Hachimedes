@@ -71,7 +71,7 @@ export function FlashLoanInterface() {
 
   // 计算预览值
   const previewData = useMemo(() => {
-    if (!positionInfo || !depositAmount || isNaN(parseFloat(depositAmount))) {
+    if (!positionInfo || !depositAmount || isNaN(parseFloat(depositAmount)) || positionInfo.ltv === undefined) {
       return null;
     }
 
