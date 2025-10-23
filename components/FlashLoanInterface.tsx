@@ -100,7 +100,7 @@ export function FlashLoanInterface() {
       newCollateral,
       newDebt,
       newLtv,
-      exceedsMax: newLtv > vaultConfig.maxLtv
+      exceedsMax: operationType === 'leverageSwap' ? newLtv > 78 : newLtv > vaultConfig.maxLtv
     };
   }, [positionInfo, depositAmount, operationType, vaultConfig.maxLtv]);
 
@@ -238,11 +238,12 @@ export function FlashLoanInterface() {
 
     if (operationType === 'leverageSwap') {
       // 加杠杆：借 X USDS -> swap 成 JLP -> 存入抵押品 -> 借 X USDS 还闪电贷
-      // 约束：新LTV = (currentDebt + X) / ((currentCollateral + X/price) × price) ≤ maxLtv
-      // 推导：X ≤ (maxLtv% × currentCollateral × price - currentDebt) / (1 - maxLtv%)
-      const maxLtvRatio = vaultConfig.maxLtv / 100;
-      const numerator = maxLtvRatio * currentCollateral * currentPrice - currentDebt;
-      const denominator = 1 - maxLtvRatio;
+      // 约束：新LTV = (currentDebt + X) / ((currentCollateral + X/price) × price) ≤ safeLtv
+      // 推导：X ≤ (safeLtv% × currentCollateral × price - currentDebt) / (1 - safeLtv%)
+      // 安全起见，使用 78% 作为加杠杆的极限，而不是 maxLtv 85%
+      const safeLtvRatio = 0.78;
+      const numerator = safeLtvRatio * currentCollateral * currentPrice - currentDebt;
+      const denominator = 1 - safeLtvRatio;
       return Math.max(0, numerator / denominator);
     } else if (operationType === 'deleverageSwap') {
       // 去杠杆：借 X JLP -> swap 成 USDS -> 还债 -> 取出 X JLP 还闪电贷
