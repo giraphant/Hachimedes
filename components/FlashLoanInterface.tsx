@@ -648,15 +648,15 @@ export function FlashLoanInterface() {
                   <button
                     type="button"
                     onClick={() => setOperationType('deleverageSwap')}
-                    className={`relative p-4 rounded-lg border-2 transition-all ${
+                    className={`p-4 rounded-lg border-2 transition-all ${
                       operationType === 'deleverageSwap'
                         ? 'border-purple-500 bg-purple-500/10'
                         : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
                     }`}
                   >
-                    <div className="relative mb-1">
-                      <TrendingDown className={`absolute left-1/2 -translate-x-10 top-1/2 -translate-y-1/2 h-5 w-5 ${operationType === 'deleverageSwap' ? 'text-purple-500' : 'text-slate-400'}`} />
-                      <span className={`font-semibold text-center block ${operationType === 'deleverageSwap' ? 'text-purple-500' : 'text-slate-400'}`}>
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <TrendingDown className={`h-5 w-5 flex-shrink-0 ${operationType === 'deleverageSwap' ? 'text-purple-500' : 'text-slate-400'}`} />
+                      <span className={`font-semibold ${operationType === 'deleverageSwap' ? 'text-purple-500' : 'text-slate-400'}`}>
                         去杠杆
                       </span>
                     </div>
@@ -666,15 +666,15 @@ export function FlashLoanInterface() {
                   <button
                     type="button"
                     onClick={() => setOperationType('leverageSwap')}
-                    className={`relative p-4 rounded-lg border-2 transition-all ${
+                    className={`p-4 rounded-lg border-2 transition-all ${
                       operationType === 'leverageSwap'
                         ? 'border-cyan-500 bg-cyan-500/10'
                         : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
                     }`}
                   >
-                    <div className="relative mb-1">
-                      <TrendingUp className={`absolute left-1/2 -translate-x-10 top-1/2 -translate-y-1/2 h-5 w-5 ${operationType === 'leverageSwap' ? 'text-cyan-500' : 'text-slate-400'}`} />
-                      <span className={`font-semibold text-center block ${operationType === 'leverageSwap' ? 'text-cyan-500' : 'text-slate-400'}`}>
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <TrendingUp className={`h-5 w-5 flex-shrink-0 ${operationType === 'leverageSwap' ? 'text-cyan-500' : 'text-slate-400'}`} />
+                      <span className={`font-semibold ${operationType === 'leverageSwap' ? 'text-cyan-500' : 'text-slate-400'}`}>
                         加杠杆
                       </span>
                     </div>
