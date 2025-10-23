@@ -520,71 +520,95 @@ export function FlashLoanInterface() {
                       <span>加载仓位信息...</span>
                     </div>
                   ) : positionInfo ? (
-                    <>
-                      {/* LTV Display */}
+                    <div className="space-y-6">
+                      {/* Vault 信息 - 移到顶部小标签 */}
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="px-2 py-1 rounded bg-blue-950/50 text-blue-400 border border-blue-900/50">
+                          {vaultConfig.name}
+                        </span>
+                        <span className="text-slate-500">
+                          Max: {vaultConfig.maxLtv}% · 清算: {vaultConfig.liquidationLtv}%
+                        </span>
+                      </div>
+
+                      {/* LTV Display - 加进度条 */}
                       {positionInfo.ltv !== undefined && (
-                        <div className="text-center mb-4 pb-4 border-b border-slate-700">
-                          <div className="text-xs text-slate-400 mb-1">当前 LTV</div>
-                          <div className={`text-5xl font-bold mb-1 ${
-                            positionInfo.ltv < 70 ? 'text-green-400' :
-                            positionInfo.ltv < 82 ? 'text-yellow-400' :
-                            'text-red-400'
-                          }`}>
-                            {positionInfo.ltv.toFixed(1)}%
+                        <div className="space-y-3">
+                          <div className="flex items-end justify-between">
+                            <span className="text-sm text-slate-400">健康度</span>
+                            <div className={`text-4xl font-bold ${
+                              positionInfo.ltv < 70 ? 'text-green-400' :
+                              positionInfo.ltv < 82 ? 'text-yellow-400' :
+                              'text-red-400'
+                            }`}>
+                              {positionInfo.ltv.toFixed(1)}%
+                            </div>
                           </div>
-                          <div className="text-xs text-slate-500">
-                            安全: &lt;70% · 警告: 70-82% · 危险: &gt;82% · 清算: {vaultConfig.liquidationLtv}%
+
+                          {/* LTV 进度条 */}
+                          <div className="relative h-3 bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                              className={`absolute inset-y-0 left-0 rounded-full transition-all ${
+                                positionInfo.ltv < 70 ? 'bg-gradient-to-r from-green-500 to-green-400' :
+                                positionInfo.ltv < 82 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
+                                'bg-gradient-to-r from-red-500 to-red-400'
+                              }`}
+                              style={{ width: `${Math.min(positionInfo.ltv, 100)}%` }}
+                            />
+                            {/* 清算线标记 */}
+                            <div
+                              className="absolute inset-y-0 w-0.5 bg-red-500/50"
+                              style={{ left: `${vaultConfig.liquidationLtv}%` }}
+                            />
+                          </div>
+
+                          {/* 区间说明 */}
+                          <div className="flex justify-between text-xs text-slate-500">
+                            <span>0%</span>
+                            <span className="text-yellow-500">70%</span>
+                            <span className="text-orange-500">82%</span>
+                            <span className="text-red-500">{vaultConfig.liquidationLtv}%</span>
                           </div>
                         </div>
                       )}
 
-                      {/* Vault 基本信息 */}
-                      <div className="text-center mb-4 pb-4 border-b border-slate-700">
-                        <div className="text-xs text-slate-400 mb-1">{vaultConfig.name}</div>
-                        <div className="text-sm text-slate-500">
-                          Max LTV: {vaultConfig.maxLtv}% · 清算: {vaultConfig.liquidationLtv}%
-                        </div>
-                      </div>
-
-                      {/* 抵押品 & 债务 */}
+                      {/* 抵押品 & 债务 - 更突出 */}
                       <div className="grid grid-cols-2 gap-4">
                         <div className="relative group">
-                          <div className="text-center p-3 rounded-lg bg-slate-900/50 border border-slate-800 hover:border-slate-600 transition-colors cursor-pointer"
+                          <div className="text-center p-4 rounded-xl bg-gradient-to-br from-green-950/30 to-slate-950/50 border-2 border-green-900/30 hover:border-green-700/50 transition-all cursor-pointer"
                                onClick={() => {
                                  setManageDialogType('collateral');
                                  setIsManageDialogOpen(true);
                                }}>
-                            <div className="text-xs text-slate-500 mb-1 flex items-center justify-center gap-1">
+                            <div className="text-xs text-slate-500 mb-2 flex items-center justify-center gap-1">
                               抵押品
                               <Settings className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
-                            <div className="text-xl font-bold text-green-400">
+                            <div className="text-2xl font-bold text-green-400 mb-1">
                               {positionInfo.collateralAmountUi.toFixed(2)}
                             </div>
                             <div className="text-xs text-slate-400">{TOKENS[vaultConfig.collateralToken].symbol}</div>
                           </div>
-                          <div className="absolute inset-0 rounded-lg bg-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                         </div>
 
                         <div className="relative group">
-                          <div className="text-center p-3 rounded-lg bg-slate-900/50 border border-slate-800 hover:border-slate-600 transition-colors cursor-pointer"
+                          <div className="text-center p-4 rounded-xl bg-gradient-to-br from-orange-950/30 to-slate-950/50 border-2 border-orange-900/30 hover:border-orange-700/50 transition-all cursor-pointer"
                                onClick={() => {
                                  setManageDialogType('debt');
                                  setIsManageDialogOpen(true);
                                }}>
-                            <div className="text-xs text-slate-500 mb-1 flex items-center justify-center gap-1">
+                            <div className="text-xs text-slate-500 mb-2 flex items-center justify-center gap-1">
                               债务
                               <Settings className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
-                            <div className="text-xl font-bold text-orange-400">
+                            <div className="text-2xl font-bold text-orange-400 mb-1">
                               {positionInfo.debtAmountUi.toFixed(2)}
                             </div>
                             <div className="text-xs text-slate-400">{TOKENS[vaultConfig.debtToken].symbol}</div>
                           </div>
-                          <div className="absolute inset-0 rounded-lg bg-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                         </div>
                       </div>
-                    </>
+                    </div>
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-slate-500 mb-2">未加载仓位</p>
