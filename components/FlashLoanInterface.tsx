@@ -80,6 +80,10 @@ export function FlashLoanInterface() {
     const currentDebt = positionInfo.debtAmountUi;
 
     // 从当前 LTV 反推价格
+    // 防止除零：检查 collateral 和 ltv 不为 0
+    if (currentCollateral === 0 || positionInfo.ltv === 0 || currentDebt === 0) {
+      return null;
+    }
     const currentPrice = currentDebt / (currentCollateral * positionInfo.ltv / 100);
 
     let newCollateral, newDebt, newLtv;
@@ -234,6 +238,11 @@ export function FlashLoanInterface() {
 
     const currentCollateral = positionInfo.collateralAmountUi;
     const currentDebt = positionInfo.debtAmountUi;
+
+    // 防止除零：检查 collateral 和 ltv 不为 0
+    if (currentCollateral === 0 || positionInfo.ltv === 0 || currentDebt === 0) {
+      return 0;
+    }
     const currentPrice = currentDebt / (currentCollateral * positionInfo.ltv / 100);
 
     if (operationType === 'leverageSwap') {
@@ -393,6 +402,7 @@ export function FlashLoanInterface() {
             {positionId && <p>Position ID: {positionId}</p>}
             {swapQuote && (
               <div>
+                {/* 注意：硬编码 1e6 是合理的，因为当前所有支持的代币（JLP/USDC/USDS/USDG）都是 6 位小数 */}
                 <p className="text-xs">输入: {(parseInt(swapQuote.inputAmount) / 1e6).toFixed(6)} {depositToken}</p>
                 <p className="text-xs">输出: {(parseInt(swapQuote.outputAmount) / 1e6).toFixed(6)} {borrowToken}</p>
                 {swapQuote.priceImpactPct && (
@@ -787,7 +797,12 @@ export function FlashLoanInterface() {
                   <div className="space-y-2">
                     <Slider
                       value={[parseFloat(depositAmount) || 0]}
-                      onValueChange={([value]) => setDepositAmount(value.toFixed(6))}
+                      onValueChange={([value]) => {
+                        // 只有在值有效时才更新，避免 NaN 问题
+                        if (!isNaN(value) && isFinite(value)) {
+                          setDepositAmount(value.toFixed(6));
+                        }
+                      }}
                       max={maxAmount > 0 ? maxAmount : 1}
                       step={maxAmount > 0 ? maxAmount / 100 : 0.01}
                       disabled={maxAmount === 0}
