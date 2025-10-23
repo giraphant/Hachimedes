@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletButton } from '@/components/WalletButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,6 +68,41 @@ export function FlashLoanInterface() {
     collateral: number;
     debt: number;
   }>({ collateral: 0, debt: 0 });
+
+  // 计算预览值
+  const previewData = useMemo(() => {
+    if (!positionInfo || !depositAmount || isNaN(parseFloat(depositAmount))) {
+      return null;
+    }
+
+    const amount = parseFloat(depositAmount);
+    const currentCollateral = positionInfo.collateralAmountUi;
+    const currentDebt = positionInfo.debtAmountUi;
+
+    // 从当前 LTV 反推价格
+    const currentPrice = currentDebt / (currentCollateral * positionInfo.ltv / 100);
+
+    let newCollateral, newDebt, newLtv;
+
+    if (operationType === 'leverageSwap') {
+      // 加杠杆：借 X USDS，swap 成 JLP
+      newCollateral = currentCollateral + (amount / currentPrice);
+      newDebt = currentDebt + amount;
+    } else {
+      // 去杠杆：借 X JLP，swap 成 USDS
+      newCollateral = currentCollateral - amount;
+      newDebt = currentDebt - (amount * currentPrice);
+    }
+
+    newLtv = (newDebt / (newCollateral * currentPrice)) * 100;
+
+    return {
+      newCollateral,
+      newDebt,
+      newLtv,
+      exceedsMax: newLtv > vaultConfig.maxLtv
+    };
+  }, [positionInfo, depositAmount, operationType, vaultConfig.maxLtv]);
 
   // 获取钱包余额
   const loadWalletBalances = async () => {
@@ -536,12 +571,26 @@ export function FlashLoanInterface() {
                         <div className="space-y-3">
                           <div className="flex items-end justify-between">
                             <span className="text-sm text-slate-400">健康度</span>
-                            <div className={`text-4xl font-bold ${
-                              positionInfo.ltv < 70 ? 'text-green-400' :
-                              positionInfo.ltv < 82 ? 'text-yellow-400' :
-                              'text-red-400'
-                            }`}>
-                              {positionInfo.ltv.toFixed(1)}%
+                            <div className="flex items-center gap-2">
+                              <div className={`text-4xl font-bold ${
+                                positionInfo.ltv < 70 ? 'text-green-400' :
+                                positionInfo.ltv < 82 ? 'text-yellow-400' :
+                                'text-red-400'
+                              }`}>
+                                {positionInfo.ltv.toFixed(1)}%
+                              </div>
+                              {previewData && (
+                                <>
+                                  <span className="text-2xl text-slate-600">→</span>
+                                  <div className={`text-4xl font-bold ${
+                                    previewData.newLtv < 70 ? 'text-green-400' :
+                                    previewData.newLtv < 82 ? 'text-yellow-400' :
+                                    'text-red-400'
+                                  }`}>
+                                    {previewData.newLtv.toFixed(1)}%
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
 
@@ -584,8 +633,14 @@ export function FlashLoanInterface() {
                               </div>
                               <Settings className="absolute top-0 right-1 h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
-                            <div className="text-2xl font-bold text-green-400 mb-1">
-                              {positionInfo.collateralAmountUi.toFixed(2)}
+                            <div className="flex items-center justify-center gap-1.5 text-2xl font-bold text-green-400 mb-1">
+                              <span>{positionInfo.collateralAmountUi.toFixed(2)}</span>
+                              {previewData && (
+                                <>
+                                  <span className="text-slate-600">→</span>
+                                  <span>{previewData.newCollateral.toFixed(2)}</span>
+                                </>
+                              )}
                             </div>
                             <div className="text-xs text-slate-400">{TOKENS[vaultConfig.collateralToken].symbol}</div>
                           </div>
@@ -603,8 +658,14 @@ export function FlashLoanInterface() {
                               </div>
                               <Settings className="absolute top-0 right-1 h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
-                            <div className="text-2xl font-bold text-orange-400 mb-1">
-                              {positionInfo.debtAmountUi.toFixed(2)}
+                            <div className="flex items-center justify-center gap-1.5 text-2xl font-bold text-orange-400 mb-1">
+                              <span>{positionInfo.debtAmountUi.toFixed(2)}</span>
+                              {previewData && (
+                                <>
+                                  <span className="text-slate-600">→</span>
+                                  <span>{previewData.newDebt.toFixed(2)}</span>
+                                </>
+                              )}
                             </div>
                             <div className="text-xs text-slate-400">{TOKENS[vaultConfig.debtToken].symbol}</div>
                           </div>
@@ -735,85 +796,6 @@ export function FlashLoanInterface() {
                   </div>
                 </div>
 
-                {/* 预测结果 */}
-                {positionInfo && depositAmount && parseFloat(depositAmount) > 0 && positionInfo.ltv !== undefined && (() => {
-                  const amount = parseFloat(depositAmount);
-                  const currentCollateral = positionInfo.collateralAmountUi;
-                  const currentDebt = positionInfo.debtAmountUi;
-
-                  // 从当前 LTV 反推价格
-                  // LTV = debt / (collateral * price)
-                  // price = debt / (collateral * LTV / 100)
-                  const currentPrice = currentDebt / (currentCollateral * positionInfo.ltv / 100);
-
-                  let newCollateral, newDebt, newLtv;
-
-                  if (operationType === 'leverageSwap') {
-                    // 加杠杆：借 X USDS，swap 成 JLP
-                    newCollateral = currentCollateral + (amount / currentPrice);
-                    newDebt = currentDebt + amount;
-                  } else {
-                    // 去杠杆：借 X JLP，swap 成 USDS
-                    newCollateral = currentCollateral - amount;
-                    newDebt = currentDebt - (amount * currentPrice);
-                  }
-
-                  newLtv = (newDebt / (newCollateral * currentPrice)) * 100;
-
-                  return (
-                    <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700 space-y-3">
-                      <div className="text-xs font-semibold text-slate-400">操作预测</div>
-
-                      {/* 当前 → 预测 对比 */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500">LTV</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-400">{positionInfo.ltv.toFixed(2)}%</span>
-                            <span className="text-slate-600">→</span>
-                            <span className={`font-bold ${
-                              newLtv < 70 ? 'text-green-400' :
-                              newLtv < 82 ? 'text-yellow-400' :
-                              'text-red-400'
-                            }`}>
-                              {newLtv.toFixed(2)}%
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500">抵押品 ({TOKENS[vaultConfig.collateralToken].symbol})</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-400">{currentCollateral.toFixed(2)}</span>
-                            <span className="text-slate-600">→</span>
-                            <span className="font-medium text-cyan-400">{newCollateral.toFixed(2)}</span>
-                            <span className={`text-xs ${operationType === 'leverageSwap' ? 'text-green-400' : 'text-red-400'}`}>
-                              ({operationType === 'leverageSwap' ? '+' : ''}{(newCollateral - currentCollateral).toFixed(2)})
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500">债务 ({TOKENS[vaultConfig.debtToken].symbol})</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-400">{currentDebt.toFixed(2)}</span>
-                            <span className="text-slate-600">→</span>
-                            <span className="font-medium text-cyan-400">{newDebt.toFixed(2)}</span>
-                            <span className={`text-xs ${operationType === 'leverageSwap' ? 'text-orange-400' : 'text-green-400'}`}>
-                              ({operationType === 'leverageSwap' ? '+' : ''}{(newDebt - currentDebt).toFixed(2)})
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {newLtv > vaultConfig.maxLtv && (
-                        <div className="text-xs text-red-400 bg-red-950/30 px-2 py-1 rounded">
-                          ⚠️ 预测 LTV 超过最大值 {vaultConfig.maxLtv}%
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
               </div>
 
               {/* 4️⃣ Execute Button - 执行操作 */}
