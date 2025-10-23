@@ -575,14 +575,16 @@ export function FlashLoanInterface() {
                       {/* 抵押品 & 债务 - 更突出 */}
                       <div className="grid grid-cols-2 gap-4">
                         <div className="relative group">
-                          <div className="text-center p-4 rounded-xl bg-gradient-to-br from-green-950/30 to-slate-950/50 border-2 border-green-900/30 hover:border-green-700/50 transition-all cursor-pointer"
+                          <div className="text-center p-4 rounded-xl bg-slate-900/30 border-2 border-slate-700/40 hover:border-slate-600 transition-all cursor-pointer"
                                onClick={() => {
                                  setManageDialogType('collateral');
                                  setIsManageDialogOpen(true);
                                }}>
-                            <div className="text-xs text-slate-500 mb-2 flex items-center justify-center gap-1">
-                              抵押品
-                              <Settings className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="relative">
+                              <div className="text-xs text-slate-500 mb-2 text-center">
+                                抵押品
+                              </div>
+                              <Settings className="absolute top-0 right-1 h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
                             <div className="text-2xl font-bold text-green-400 mb-1">
                               {positionInfo.collateralAmountUi.toFixed(2)}
@@ -592,14 +594,16 @@ export function FlashLoanInterface() {
                         </div>
 
                         <div className="relative group">
-                          <div className="text-center p-4 rounded-xl bg-gradient-to-br from-orange-950/30 to-slate-950/50 border-2 border-orange-900/30 hover:border-orange-700/50 transition-all cursor-pointer"
+                          <div className="text-center p-4 rounded-xl bg-slate-900/30 border-2 border-slate-700/40 hover:border-slate-600 transition-all cursor-pointer"
                                onClick={() => {
                                  setManageDialogType('debt');
                                  setIsManageDialogOpen(true);
                                }}>
-                            <div className="text-xs text-slate-500 mb-2 flex items-center justify-center gap-1">
-                              债务
-                              <Settings className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="relative">
+                              <div className="text-xs text-slate-500 mb-2 text-center">
+                                债务
+                              </div>
+                              <Settings className="absolute top-0 right-1 h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
                             <div className="text-2xl font-bold text-orange-400 mb-1">
                               {positionInfo.debtAmountUi.toFixed(2)}
@@ -644,15 +648,15 @@ export function FlashLoanInterface() {
                   <button
                     type="button"
                     onClick={() => setOperationType('deleverageSwap')}
-                    className={`p-4 rounded-lg border-2 transition-all ${
+                    className={`relative p-4 rounded-lg border-2 transition-all ${
                       operationType === 'deleverageSwap'
                         ? 'border-purple-500 bg-purple-500/10'
                         : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
                     }`}
                   >
-                    <div className="flex items-center justify-center gap-2 mb-1">
-                      <TrendingDown className={`h-5 w-5 ${operationType === 'deleverageSwap' ? 'text-purple-500' : 'text-slate-400'}`} />
-                      <span className={`font-semibold ${operationType === 'deleverageSwap' ? 'text-purple-500' : 'text-slate-400'}`}>
+                    <div className="relative mb-1">
+                      <TrendingDown className={`absolute left-1/2 -translate-x-10 top-1/2 -translate-y-1/2 h-5 w-5 ${operationType === 'deleverageSwap' ? 'text-purple-500' : 'text-slate-400'}`} />
+                      <span className={`font-semibold text-center block ${operationType === 'deleverageSwap' ? 'text-purple-500' : 'text-slate-400'}`}>
                         去杠杆
                       </span>
                     </div>
@@ -662,15 +666,15 @@ export function FlashLoanInterface() {
                   <button
                     type="button"
                     onClick={() => setOperationType('leverageSwap')}
-                    className={`p-4 rounded-lg border-2 transition-all ${
+                    className={`relative p-4 rounded-lg border-2 transition-all ${
                       operationType === 'leverageSwap'
                         ? 'border-cyan-500 bg-cyan-500/10'
                         : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
                     }`}
                   >
-                    <div className="flex items-center justify-center gap-2 mb-1">
-                      <TrendingUp className={`h-5 w-5 ${operationType === 'leverageSwap' ? 'text-cyan-500' : 'text-slate-400'}`} />
-                      <span className={`font-semibold ${operationType === 'leverageSwap' ? 'text-cyan-500' : 'text-slate-400'}`}>
+                    <div className="relative mb-1">
+                      <TrendingUp className={`absolute left-1/2 -translate-x-10 top-1/2 -translate-y-1/2 h-5 w-5 ${operationType === 'leverageSwap' ? 'text-cyan-500' : 'text-slate-400'}`} />
+                      <span className={`font-semibold text-center block ${operationType === 'leverageSwap' ? 'text-cyan-500' : 'text-slate-400'}`}>
                         加杠杆
                       </span>
                     </div>
