@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { TOKENS } from '@/lib/constants';
 import { getVaultConfig, getAvailableVaults, DEFAULT_VAULT_ID } from '@/lib/vaults';
 import { fetchPositionInfo, PositionInfo } from '@/lib/position';
-import { Loader2, TrendingUp, TrendingDown, Zap, ArrowRightLeft, RefreshCw, Info, Settings } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Zap, ArrowRightLeft, RefreshCw, Info, Settings, SlidersHorizontal } from 'lucide-react';
 import { PositionManageDialog } from './PositionManageDialog';
 import { Slider } from '@/components/ui/slider';
 import { useEffect } from 'react';
@@ -28,6 +28,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 export function FlashLoanInterface() {
   const { publicKey, signTransaction } = useWallet();
@@ -68,6 +73,11 @@ export function FlashLoanInterface() {
     collateral: number;
     debt: number;
   }>({ collateral: 0, debt: 0 });
+
+  // 高级设置
+  const [slippageBps, setSlippageBps] = useState(50); // 默认 0.5% (50 basis points)
+  const [priorityFee, setPriorityFee] = useState<'default' | 'fast' | 'turbo'>('default');
+  const [preferredDex, setPreferredDex] = useState<string>('auto'); // 'auto', 'Orca', 'Raydium', 'Whirlpool'
 
   // 计算预览值
   const previewData = useMemo(() => {
@@ -325,7 +335,7 @@ export function FlashLoanInterface() {
           vaultId: vaultId,
           positionId: selectedPositionId!,
           connection,
-          slippageBps: 50,
+          slippageBps: slippageBps,
         });
 
         transaction = result.transaction;
@@ -350,7 +360,7 @@ export function FlashLoanInterface() {
           vaultId: vaultId,
           positionId: selectedPositionId!,
           connection,
-          slippageBps: 50,
+          slippageBps: slippageBps,
         });
 
         transaction = result.transaction;
@@ -816,6 +826,105 @@ export function FlashLoanInterface() {
                   </div>
                 </div>
 
+              </div>
+
+              {/* 3.5️⃣ Advanced Settings - 高级设置 */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-900/30 border border-slate-700/40">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4 text-slate-400" />
+                  <span className="text-sm text-slate-300">高级设置</span>
+                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-xs">
+                      滑点: {(slippageBps / 100).toFixed(1)}%
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 bg-slate-900 border-slate-700">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <h4 className="font-medium text-white flex items-center gap-2">
+                          <SlidersHorizontal className="h-4 w-4" />
+                          交易设置
+                        </h4>
+                        <p className="text-xs text-slate-400">
+                          自定义您的交易参数以获得最佳执行
+                        </p>
+                      </div>
+
+                      {/* 滑点设置 */}
+                      <div className="space-y-3">
+                        <Label className="text-slate-300 text-sm">滑点容忍度</Label>
+                        <div className="flex gap-2">
+                          {[10, 50, 100, 300].map((bps) => (
+                            <Button
+                              key={bps}
+                              type="button"
+                              variant={slippageBps === bps ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setSlippageBps(bps)}
+                              className="flex-1 text-xs"
+                            >
+                              {(bps / 100).toFixed(1)}%
+                            </Button>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={slippageBps / 100}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) * 100;
+                              if (!isNaN(value) && value >= 0 && value <= 5000) {
+                                setSlippageBps(Math.round(value));
+                              }
+                            }}
+                            className="bg-slate-800 border-slate-700 text-white text-sm"
+                            step="0.1"
+                            min="0"
+                            max="50"
+                          />
+                          <span className="text-xs text-slate-400 whitespace-nowrap">%</span>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          当前: {(slippageBps / 100).toFixed(2)}% ({slippageBps} bps)
+                        </p>
+                      </div>
+
+                      {/* 优先费用 - 未来功能 */}
+                      <div className="space-y-3 opacity-50">
+                        <Label className="text-slate-300 text-sm">优先费用 (即将推出)</Label>
+                        <div className="flex gap-2">
+                          <Button type="button" variant="outline" size="sm" disabled className="flex-1 text-xs">
+                            默认
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" disabled className="flex-1 text-xs">
+                            快速
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" disabled className="flex-1 text-xs">
+                            极速
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* DEX 选择 - 未来功能 */}
+                      <div className="space-y-3 opacity-50">
+                        <Label className="text-slate-300 text-sm">DEX 偏好 (即将推出)</Label>
+                        <Select disabled>
+                          <SelectTrigger className="bg-slate-800 border-slate-700 text-sm">
+                            <SelectValue placeholder="自动选择最优路由" />
+                          </SelectTrigger>
+                        </Select>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-700">
+                        <p className="text-xs text-slate-500">
+                          💡 提示: 较低的滑点可能导致交易失败，较高的滑点可能导致更差的价格
+                        </p>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* 4️⃣ Execute Button - 执行操作 */}
