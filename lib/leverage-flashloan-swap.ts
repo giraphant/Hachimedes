@@ -61,14 +61,24 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
   try {
     const flashLoanAmountRaw = Math.floor(flashLoanAmount * 1e6);
 
-    // Step 0: Compute Budget - 添加优先费用（如果用户指定）
+    // Step 0: Compute Budget - 设置计算单元限制和优先费用
     console.log('\n[0/6] Setting up Compute Budget...');
     const computeBudgetIxs: TransactionInstruction[] = [];
 
+    // 设置计算单元限制（官方使用约 400k-600k，我们设置 600k 以确保足够）
+    const computeUnitLimit = 600_000;
+    computeBudgetIxs.push(
+      ComputeBudgetProgram.setComputeUnitLimit({
+        units: computeUnitLimit,
+      })
+    );
+    console.log(`→ Set compute unit limit: ${computeUnitLimit}`);
+
+    // 如果用户指定了优先费用，设置计算单元价格
     if (priorityFeeLamports > 0) {
       console.log(`→ Adding priority fee: ${priorityFeeLamports} lamports`);
       // 设置计算单元价格（micro-lamports per compute unit）
-      const computeUnitPrice = Math.floor((priorityFeeLamports * 1_000_000) / 200_000); // micro-lamports / compute units
+      const computeUnitPrice = Math.floor((priorityFeeLamports * 1_000_000) / computeUnitLimit);
       computeBudgetIxs.push(
         ComputeBudgetProgram.setComputeUnitPrice({
           microLamports: computeUnitPrice,
