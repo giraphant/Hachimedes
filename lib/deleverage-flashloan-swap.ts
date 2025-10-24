@@ -337,8 +337,8 @@ export async function buildDeleverageFlashLoanSwap(params: DeleverageFlashLoanSw
     ];
 
     console.log('\n═══ Transaction Summary ═══');
-    console.log('Total instructions:', allInstructions.length, '(Target: 4-5, Official: 6)');
-    console.log('  Compute Budget: 0 (removed to save space)');
+    console.log('Total instructions:', allInstructions.length);
+    console.log('  Compute Budget:', computeBudgetIxs.length, priorityFeeLamports > 0 ? '(Limit + Price)' : '(Limit only)');
     console.log('  Flash Borrow: 1');
     console.log('  Swap (single DEX): ', swapInstructions.length);
     console.log('  Repay: ', repayInstructions.length, needsInit ? '❌ (includes init - UNEXPECTED!)' : '✅ (operate only)');
