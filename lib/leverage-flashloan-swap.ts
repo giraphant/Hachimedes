@@ -14,6 +14,8 @@ export interface LeverageFlashLoanSwapParams {
   positionId: number;
   connection: Connection;
   slippageBps?: number;
+  priorityFeeLamports?: number; // 优先费用（lamports）
+  preferredDexes?: string[];    // 偏好的 DEX 列表
 }
 
 /**
@@ -45,6 +47,8 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
     positionId,
     connection,
     slippageBps = 50,
+    priorityFeeLamports = 0,
+    preferredDexes,
   } = params;
 
   console.log('\n════════════════════════════════════════');
@@ -57,10 +61,22 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
   try {
     const flashLoanAmountRaw = Math.floor(flashLoanAmount * 1e6);
 
-    // Step 0: Compute Budget (完全移除以节省空间)
-    console.log('\n[0/6] Skipping Compute Budget to minimize transaction size...');
+    // Step 0: Compute Budget - 添加优先费用（如果用户指定）
+    console.log('\n[0/6] Setting up Compute Budget...');
     const computeBudgetIxs: TransactionInstruction[] = [];
-    console.log('→ No compute budget instructions (using default limits)');
+
+    if (priorityFeeLamports > 0) {
+      console.log(`→ Adding priority fee: ${priorityFeeLamports} lamports`);
+      // 设置计算单元价格（micro-lamports per compute unit）
+      const computeUnitPrice = Math.floor((priorityFeeLamports * 1_000_000) / 200_000); // micro-lamports / compute units
+      computeBudgetIxs.push(
+        ComputeBudgetProgram.setComputeUnitPrice({
+          microLamports: computeUnitPrice,
+        })
+      );
+    } else {
+      console.log('→ No priority fee (using default)');
+    }
 
     // Step 1: Flash Borrow USDS from liquidity pool
     console.log('\n[1/6] Building Flash Borrow instruction...');
@@ -85,28 +101,45 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
 
     const jupiterApi = createJupiterApiClient();
 
-    // 尝试获取最简路由（只用单个 DEX）
-    console.log('Attempting to get minimal route (single DEX)...');
-
     let quoteResponse;
 
-    // 逐个尝试单个 DEX，选择账户数最少的
-    const singleDexOptions = ['Orca', 'Raydium', 'Whirlpool'];
-
-    for (const dex of singleDexOptions) {
+    // 如果用户指定了 DEX 偏好，使用用户选择
+    if (preferredDexes && preferredDexes.length > 0) {
+      console.log('Using user-preferred DEXes:', preferredDexes.join(', '));
       try {
-        console.log(`Trying ${dex} only...`);
         quoteResponse = await jupiterApi.quoteGet({
           inputMint: debtMint.toString(), // USDS
           outputMint: collateralMint.toString(), // JLP
           amount: flashLoanAmountRaw,
           slippageBps,
-          dexes: [dex], // 只用单个 DEX
+          dexes: preferredDexes,
         });
-        console.log(`✓ Got quote from ${dex}`);
-        break; // 找到就用
+        console.log('✓ Got quote from preferred DEXes');
       } catch (e) {
-        console.log(`${dex} failed, trying next...`);
+        console.log('Preferred DEXes failed, falling back to auto selection...');
+      }
+    }
+
+    // 如果没有指定 DEX 或失败，尝试获取最简路由（只用单个 DEX）
+    if (!quoteResponse) {
+      console.log('Attempting to get minimal route (single DEX)...');
+      const singleDexOptions = ['Orca', 'Raydium', 'Whirlpool'];
+
+      for (const dex of singleDexOptions) {
+        try {
+          console.log(`Trying ${dex} only...`);
+          quoteResponse = await jupiterApi.quoteGet({
+            inputMint: debtMint.toString(), // USDS
+            outputMint: collateralMint.toString(), // JLP
+            amount: flashLoanAmountRaw,
+            slippageBps,
+            dexes: [dex], // 只用单个 DEX
+          });
+          console.log(`✓ Got quote from ${dex}`);
+          break; // 找到就用
+        } catch (e) {
+          console.log(`${dex} failed, trying next...`);
+        }
       }
     }
 

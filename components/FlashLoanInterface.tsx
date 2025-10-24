@@ -77,7 +77,16 @@ export function FlashLoanInterface() {
   // 高级设置
   const [slippageBps, setSlippageBps] = useState(50); // 默认 0.5% (50 basis points)
   const [priorityFee, setPriorityFee] = useState<'default' | 'fast' | 'turbo'>('default');
-  const [preferredDex, setPreferredDex] = useState<string>('auto'); // 'auto', 'Orca', 'Raydium', 'Whirlpool'
+  const [selectedDexes, setSelectedDexes] = useState<string[]>([]); // 选中的 DEX 列表，空数组表示自动选择
+
+  // 计算优先费用（lamports）
+  const priorityFeeLamports = useMemo(() => {
+    switch (priorityFee) {
+      case 'fast': return 10000; // 0.00001 SOL
+      case 'turbo': return 50000; // 0.00005 SOL
+      default: return 0;
+    }
+  }, [priorityFee]);
 
   // 计算预览值
   const previewData = useMemo(() => {
@@ -336,6 +345,8 @@ export function FlashLoanInterface() {
           positionId: selectedPositionId!,
           connection,
           slippageBps: slippageBps,
+          priorityFeeLamports: priorityFeeLamports,
+          preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
         });
 
         transaction = result.transaction;
@@ -361,6 +372,8 @@ export function FlashLoanInterface() {
           positionId: selectedPositionId!,
           connection,
           slippageBps: slippageBps,
+          priorityFeeLamports: priorityFeeLamports,
+          preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
         });
 
         transaction = result.transaction;
@@ -891,30 +904,101 @@ export function FlashLoanInterface() {
                         </p>
                       </div>
 
-                      {/* 优先费用 - 未来功能 */}
-                      <div className="space-y-3 opacity-50">
-                        <Label className="text-slate-300 text-sm">优先费用 (即将推出)</Label>
+                      {/* 优先费用 */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-slate-300 text-sm">优先费用</Label>
+                          <span className="text-xs text-slate-500">
+                            {priorityFee === 'default' && '默认'}
+                            {priorityFee === 'fast' && '+0.00001 SOL'}
+                            {priorityFee === 'turbo' && '+0.00005 SOL'}
+                          </span>
+                        </div>
                         <div className="flex gap-2">
-                          <Button type="button" variant="outline" size="sm" disabled className="flex-1 text-xs">
+                          <Button
+                            type="button"
+                            variant={priorityFee === 'default' ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPriorityFee('default')}
+                            className="flex-1 text-xs"
+                          >
                             默认
                           </Button>
-                          <Button type="button" variant="outline" size="sm" disabled className="flex-1 text-xs">
+                          <Button
+                            type="button"
+                            variant={priorityFee === 'fast' ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPriorityFee('fast')}
+                            className="flex-1 text-xs"
+                          >
                             快速
                           </Button>
-                          <Button type="button" variant="outline" size="sm" disabled className="flex-1 text-xs">
+                          <Button
+                            type="button"
+                            variant={priorityFee === 'turbo' ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPriorityFee('turbo')}
+                            className="flex-1 text-xs"
+                          >
                             极速
                           </Button>
                         </div>
+                        <p className="text-xs text-slate-500">
+                          更高的优先费用可以加快交易确认速度
+                        </p>
                       </div>
 
-                      {/* DEX 选择 - 未来功能 */}
-                      <div className="space-y-3 opacity-50">
-                        <Label className="text-slate-300 text-sm">DEX 偏好 (即将推出)</Label>
-                        <Select disabled>
-                          <SelectTrigger className="bg-slate-800 border-slate-700 text-sm">
-                            <SelectValue placeholder="自动选择最优路由" />
-                          </SelectTrigger>
-                        </Select>
+                      {/* DEX 选择 - 多选 */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-slate-300 text-sm">DEX 路由</Label>
+                          <span className="text-xs text-slate-500">
+                            {selectedDexes.length === 0 ? '自动' : `${selectedDexes.length} 个`}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {['Orca', 'Raydium', 'Whirlpool', 'Meteora'].map((dex) => (
+                            <Button
+                              key={dex}
+                              type="button"
+                              variant={selectedDexes.includes(dex) ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => {
+                                setSelectedDexes(prev =>
+                                  prev.includes(dex)
+                                    ? prev.filter(d => d !== dex)
+                                    : [...prev, dex]
+                                );
+                              }}
+                              className="text-xs"
+                            >
+                              {dex}
+                            </Button>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedDexes([])}
+                            className="flex-1 text-xs"
+                          >
+                            自动选择
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedDexes(['Orca', 'Raydium', 'Whirlpool', 'Meteora'])}
+                            className="flex-1 text-xs"
+                          >
+                            全选
+                          </Button>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          限制路由可减少交易大小，但可能错过最优价格
+                        </p>
                       </div>
 
                       <div className="pt-2 border-t border-slate-700">
