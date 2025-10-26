@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # No ports mapping - only accessible via reverse proxy
+    environment:
+      - NODE_ENV=production
+      - PORT=28848
+      - HOSTNAME=0.0.0.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:28848/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
