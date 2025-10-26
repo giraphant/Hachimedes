@@ -35,31 +35,28 @@ async function readPriceFromOracle(
 
     console.log('Oracle account data length:', oracleAccount.data.length);
 
-    // 预言机数据格式：前 8 字节是 discriminator
-    // 价格通常存储在某个固定 offset
-    const DISCRIMINATOR_SIZE = 8;
+    // 预言机价格存储在 offset 73，使用 1e8 缩放因子
+    const PRICE_OFFSET = 73;
+    const PRICE_SCALE = 1e8;
 
-    // 尝试多个可能的 offset 来找到价格数据
-    // 价格可能使用 1e8, 1e6, 或其他缩放因子
-    const possibleScales = [1e8, 1e6, 1e9, 1e10];
-
-    console.log('Trying to parse oracle data...');
-    for (let offset = DISCRIMINATOR_SIZE; offset < Math.min(oracleAccount.data.length - 8, 120); offset += 8) {
-      const rawValue = oracleAccount.data.readBigUInt64LE(offset);
-      if (rawValue > 0n) {
-        for (const scale of possibleScales) {
-          const price = Number(rawValue) / scale;
-          // JLP 价格应该在 1-20 USD 范围内
-          if (price >= 1 && price <= 20) {
-            console.log(`Found potential price at offset ${offset}: ${price.toFixed(6)} (scale: ${scale})`);
-            return price;
-          }
-        }
-      }
+    if (oracleAccount.data.length < PRICE_OFFSET + 8) {
+      console.error('Oracle data too short. Expected at least', PRICE_OFFSET + 8, 'bytes, got', oracleAccount.data.length);
+      return null;
     }
 
-    console.error('Could not find valid price in oracle data');
-    return null;
+    const rawPrice = oracleAccount.data.readBigUInt64LE(PRICE_OFFSET);
+    const price = Number(rawPrice) / PRICE_SCALE;
+
+    console.log('Raw price value:', rawPrice.toString());
+    console.log('Oracle price:', price.toFixed(8));
+
+    // 验证价格合理性
+    if (price <= 0 || !isFinite(price)) {
+      console.error('Invalid price value:', price);
+      return null;
+    }
+
+    return price;
   } catch (error) {
     console.error('Error reading oracle price:', error);
     if (error instanceof Error) {
