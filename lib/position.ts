@@ -67,44 +67,22 @@ async function readPriceFromOracle(
 }
 
 /**
- * 从 Vault 读取预言机地址并获取价格
+ * 从 Vault 配置获取预言机地址并读取价格
  * @param connection Solana 连接
- * @param vaultAddress Vault 地址
+ * @param vaultId Vault ID
  * @returns 价格（collateral 相对于 debt 的价格）
  */
-async function readPriceFromVault(
+async function readPriceForVault(
   connection: Connection,
-  vaultAddress: string
+  vaultId: number
 ): Promise<number | null> {
   try {
-    const vaultAccount = await connection.getAccountInfo(new PublicKey(vaultAddress));
-    if (!vaultAccount) {
-      console.error('Vault account not found');
-      return null;
-    }
+    const vaultConfig = getVaultConfig(vaultId);
 
-    console.log('Vault data length:', vaultAccount.data.length);
-
-    // Vault 结构中应该包含预言机地址 (32 字节的 PublicKey)
-    // 尝试在常见位置查找预言机地址
-    const DISCRIMINATOR_SIZE = 8;
-
-    // 预言机地址可能在 offset 8-40 之间的某个位置
-    // 先尝试 offset 8 (紧跟 discriminator 之后)
-    if (vaultAccount.data.length >= DISCRIMINATOR_SIZE + 32) {
-      const oracleBytes = vaultAccount.data.slice(DISCRIMINATOR_SIZE, DISCRIMINATOR_SIZE + 32);
-      const oracleAddress = new PublicKey(oracleBytes).toBase58();
-
-      console.log('Extracted oracle address from vault:', oracleAddress);
-
-      // 从预言机读取价格
-      return await readPriceFromOracle(connection, oracleAddress);
-    }
-
-    console.error('Vault data too short to contain oracle address');
-    return null;
+    // 直接使用配置中的预言机地址
+    return await readPriceFromOracle(connection, vaultConfig.oracleAddress);
   } catch (error) {
-    console.error('Error reading price from vault:', error);
+    console.error('Error reading price for vault:', error);
     return null;
   }
 }
@@ -152,25 +130,25 @@ export async function fetchPositionInfo(
     console.log('  Collateral:', collateralAmountUi);
     console.log('  Debt:', debtAmountUi);
 
-    // 计算 LTV（使用 Vault 中的价格）
+    // 计算 LTV（使用预言机价格）
     let ltv: number | undefined;
     if (collateralAmountUi > 0 && debtAmountUi > 0) {
       try {
         // 获取 Vault 配置
         const vaultConfig = getVaultConfig(vaultId);
 
-        // 从 Vault 读取价格
-        const price = await readPriceFromVault(connection, vaultConfig.vaultAddress);
+        // 从预言机读取价格
+        const price = await readPriceForVault(connection, vaultId);
 
         if (price) {
           // LTV = debt / (collateral × price) × 100
           // price 是 collateral 相对于 debt 的价格
           ltv = (debtAmountUi / (collateralAmountUi * price)) * 100;
 
-          console.log('Collateral price:', price.toFixed(6), 'USDS per', vaultConfig.collateralToken);
+          console.log('Collateral price:', price.toFixed(6), 'per', vaultConfig.collateralToken);
           console.log('Calculated LTV:', ltv.toFixed(2) + '%');
         } else {
-          console.warn('Failed to read price from vault, LTV not available');
+          console.warn('Failed to read price from oracle, LTV not available');
         }
       } catch (e) {
         console.error('Failed to calculate LTV:', e);

@@ -12,6 +12,7 @@ export interface VaultConfig {
   maxLtv: number;           // 最大 LTV (%)
   liquidationLtv: number;   // 清算 LTV (%)
   vaultAddress: string;     // Vault 地址
+  oracleAddress: string;    // 价格预言机地址
 }
 
 export const VAULTS: Record<number, VaultConfig> = {
@@ -24,6 +25,7 @@ export const VAULTS: Record<number, VaultConfig> = {
     maxLtv: 82,
     liquidationLtv: 88,
     vaultAddress: '7xL193GD5oUvhKBruYuNofMexMUztzujdzxw5UhaWL1U',
+    oracleAddress: '2TTGSRSezqFzeLUH8JwRUbtN66XLLaymfYsWRTMjfiMw', // TODO: 需要找到正确的预言机地址
   },
   10: {
     id: 10,
@@ -34,6 +36,7 @@ export const VAULTS: Record<number, VaultConfig> = {
     maxLtv: 82,
     liquidationLtv: 88,
     vaultAddress: 'C6uU7KDu6iQajELeNTJYVnt15TzNaQ29KovvBPe2sKnR',
+    oracleAddress: '2TTGSRSezqFzeLUH8JwRUbtN66XLLaymfYsWRTMjfiMw', // TODO: 需要找到正确的预言机地址
   },
   34: {
     id: 34,
@@ -44,6 +47,7 @@ export const VAULTS: Record<number, VaultConfig> = {
     maxLtv: 82,
     liquidationLtv: 88,
     vaultAddress: '2TTGSRSezqFzeLUH8JwRUbtN66XLLaymfYsWRTMjfiMw',
+    oracleAddress: '2TTGSRSezqFzeLUH8JwRUbtN66XLLaymfYsWRTMjfiMw', // JLP/USDS 预言机
   },
 };
 
