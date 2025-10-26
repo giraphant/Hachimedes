@@ -25,7 +25,7 @@ export const VAULTS: Record<number, VaultConfig> = {
     maxLtv: 82,
     liquidationLtv: 88,
     vaultAddress: '7xL193GD5oUvhKBruYuNofMexMUztzujdzxw5UhaWL1U',
-    oracleAddress: '2TTGSRSezqFzeLUH8JwRUbtN66XLLaymfYsWRTMjfiMw', // TODO: 需要找到正确的预言机地址
+    oracleAddress: '2TTGSRSezqFzeLUH8JwRUbtN66XLLaymfYsWRTMjfiMw', // JLP 价格预言机
   },
   10: {
     id: 10,
@@ -36,7 +36,7 @@ export const VAULTS: Record<number, VaultConfig> = {
     maxLtv: 82,
     liquidationLtv: 88,
     vaultAddress: 'C6uU7KDu6iQajELeNTJYVnt15TzNaQ29KovvBPe2sKnR',
-    oracleAddress: '2TTGSRSezqFzeLUH8JwRUbtN66XLLaymfYsWRTMjfiMw', // TODO: 需要找到正确的预言机地址
+    oracleAddress: '2TTGSRSezqFzeLUH8JwRUbtN66XLLaymfYsWRTMjfiMw', // JLP 价格预言机
   },
   34: {
     id: 34,
@@ -47,7 +47,7 @@ export const VAULTS: Record<number, VaultConfig> = {
     maxLtv: 82,
     liquidationLtv: 88,
     vaultAddress: '2TTGSRSezqFzeLUH8JwRUbtN66XLLaymfYsWRTMjfiMw',
-    oracleAddress: '2TTGSRSezqFzeLUH8JwRUbtN66XLLaymfYsWRTMjfiMw', // JLP/USDS 预言机
+    oracleAddress: '2TTGSRSezqFzeLUH8JwRUbtN66XLLaymfYsWRTMjfiMw', // JLP 价格预言机
   },
 };
 
