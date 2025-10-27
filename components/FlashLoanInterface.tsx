@@ -75,7 +75,7 @@ export function FlashLoanInterface() {
   }>({ collateral: 0, debt: 0 });
 
   // 高级设置
-  const [slippageBps, setSlippageBps] = useState(50); // 默认 0.5% (50 basis points)
+  const [slippageBps, setSlippageBps] = useState(10); // 默认 0.1% (10 basis points)
   const [priorityFee, setPriorityFee] = useState<'default' | 'fast' | 'turbo'>('default');
   const [selectedDexes, setSelectedDexes] = useState<string[]>([]); // 选中的 DEX 列表，空数组表示自动选择
 
