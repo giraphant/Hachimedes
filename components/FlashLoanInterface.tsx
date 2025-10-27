@@ -79,6 +79,31 @@ export function FlashLoanInterface() {
   const [priorityFee, setPriorityFee] = useState<'default' | 'fast' | 'turbo'>('default');
   const [selectedDexes, setSelectedDexes] = useState<string[]>([]); // 选中的 DEX 列表，空数组表示自动选择
 
+  // Position 缓存辅助函数
+  const getPositionCacheKey = (walletAddress: string, vaultId: number) => {
+    return `hachimedes_position_${walletAddress}_vault_${vaultId}`;
+  };
+
+  const getCachedPositionId = (walletAddress: string, vaultId: number): number | null => {
+    try {
+      const key = getPositionCacheKey(walletAddress, vaultId);
+      const cached = localStorage.getItem(key);
+      return cached ? parseInt(cached, 10) : null;
+    } catch (error) {
+      console.error('Error reading position cache:', error);
+      return null;
+    }
+  };
+
+  const setCachedPositionId = (walletAddress: string, vaultId: number, positionId: number) => {
+    try {
+      const key = getPositionCacheKey(walletAddress, vaultId);
+      localStorage.setItem(key, positionId.toString());
+    } catch (error) {
+      console.error('Error saving position cache:', error);
+    }
+  };
+
   // 计算预览值
   const previewData = useMemo(() => {
     if (!positionInfo || !depositAmount || isNaN(parseFloat(depositAmount)) || positionInfo.ltv === undefined) {
@@ -170,8 +195,13 @@ export function FlashLoanInterface() {
 
       if (positions.length > 0) {
         // 自动选择第一个 position
-        setSelectedPositionId(positions[0]);
-        setPositionIdInput(positions[0].toString());
+        const firstPosition = positions[0];
+        setSelectedPositionId(firstPosition);
+        setPositionIdInput(firstPosition.toString());
+
+        // 保存到缓存
+        setCachedPositionId(publicKey.toString(), vaultId, firstPosition);
+
         toast({
           title: '找到 Positions',
           description: `找到 ${positions.length} 个 position(s)`,
@@ -227,13 +257,22 @@ export function FlashLoanInterface() {
     }
   };
 
-  // 钱包断连时清空仓位信息
+  // 钱包连接或 vault 切换时尝试从缓存加载 position
   useEffect(() => {
     if (!publicKey) {
       setSelectedPositionId(null);
       setPositionInfo(null);
+      return;
     }
-  }, [publicKey]);
+
+    // 尝试从缓存读取
+    const cachedPositionId = getCachedPositionId(publicKey.toString(), vaultId);
+    if (cachedPositionId !== null) {
+      console.log(`使用缓存的 position ID: ${cachedPositionId} (vault ${vaultId})`);
+      setSelectedPositionId(cachedPositionId);
+      setPositionIdInput(cachedPositionId.toString());
+    }
+  }, [publicKey, vaultId]);
 
   // selectedPositionId 变化时加载仓位信息
   useEffect(() => {
