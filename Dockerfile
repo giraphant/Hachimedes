@@ -10,34 +10,35 @@ COPY package*.json ./
 RUN npm ci
 
 # Copy source code
-COPY . .
+COPY . ./
 
-# Build Next.js app
+# Build Next.js in standalone mode
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine AS runner
+FROM node:18-alpine
 
 WORKDIR /app
 
-# Set to production environment
+# Set to production
 ENV NODE_ENV=production
 ENV PORT=28848
 ENV HOSTNAME=0.0.0.0
 
-# Create a non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Install curl for health check
+RUN apk add --no-cache curl
 
-# Copy standalone output
-COPY --from=builder /app/public ./public
+# Copy standalone build from builder
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
 
-# Set correct permissions
-RUN chown -R nextjs:nodejs /app
+# Expose port
+EXPOSE 28848
 
-USER nextjs
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:28848/ || exit 1
 
-# Use standalone server
+# Start Next.js server
 CMD ["node", "server.js"]
