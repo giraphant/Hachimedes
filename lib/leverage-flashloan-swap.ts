@@ -298,6 +298,15 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
       flashPaybackIx,
     ];
 
+    // Add Jito tip if using bundle
+    if (useJitoBundle) {
+      console.log('\n💰 Adding Jito tip instruction...');
+      const { createJitoTipInstruction } = await import('./jito-bundle');
+      const tipIx = createJitoTipInstruction(userPublicKey, 10000); // 0.00001 SOL tip
+      allInstructions.push(tipIx);
+      console.log('✓ Jito tip added: 10000 lamports');
+    }
+
     console.log('\n═══ Transaction Summary ═══');
     console.log('Total instructions:', allInstructions.length);
     console.log('  Flash Borrow: 1');
