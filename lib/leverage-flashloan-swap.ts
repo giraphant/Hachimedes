@@ -15,6 +15,8 @@ export interface LeverageFlashLoanSwapParams {
   connection: Connection;
   slippageBps?: number;       // 滑点容忍度（basis points），默认 10 (0.1%)
   preferredDexes?: string[];  // 偏好的 DEX 列表
+  onlyDirectRoutes?: boolean; // 是否仅使用直接路由，默认 false
+  useJitoBundle?: boolean;    // 是否使用 Jito Bundle，默认 false
 }
 
 /**
@@ -47,6 +49,8 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
     connection,
     slippageBps = 10, // 默认 0.1% 滑点
     preferredDexes,
+    onlyDirectRoutes = false,
+    useJitoBundle = false,
   } = params;
 
   console.log('\n════════════════════════════════════════');
@@ -94,6 +98,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
           amount: flashLoanAmountRaw,
           slippageBps,
           dexes: preferredDexes,
+          onlyDirectRoutes: onlyDirectRoutes,
         });
         console.log('✓ Got quote from preferred DEXes');
       } catch (e) {
@@ -115,6 +120,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
             amount: flashLoanAmountRaw,
             slippageBps,
             dexes: [dex], // 只用单个 DEX
+            onlyDirectRoutes: onlyDirectRoutes,
           });
           console.log(`✓ Got quote from ${dex}`);
           break; // 找到就用
@@ -132,6 +138,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
         outputMint: collateralMint.toString(),
         amount: flashLoanAmountRaw,
         slippageBps,
+        onlyDirectRoutes: onlyDirectRoutes,
       });
     }
 

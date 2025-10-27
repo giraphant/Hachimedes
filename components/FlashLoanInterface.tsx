@@ -78,6 +78,8 @@ export function FlashLoanInterface() {
   const [slippageBps, setSlippageBps] = useState(10); // 默认 0.1% (10 basis points)
   const [priorityFee, setPriorityFee] = useState<'default' | 'fast' | 'turbo'>('default');
   const [selectedDexes, setSelectedDexes] = useState<string[]>([]); // 选中的 DEX 列表，空数组表示自动选择
+  const [onlyDirectRoutes, setOnlyDirectRoutes] = useState(false); // 是否仅使用直接路由
+  const [useJitoBundle, setUseJitoBundle] = useState(false); // 是否使用 Jito Bundle
 
   // Position 缓存辅助函数
   const getPositionCacheKey = (walletAddress: string, vaultId: number) => {
@@ -376,6 +378,8 @@ export function FlashLoanInterface() {
           connection,
           slippageBps: slippageBps,
           preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
+          onlyDirectRoutes: onlyDirectRoutes,
+          useJitoBundle: useJitoBundle,
         });
 
         transaction = result.transaction;
@@ -402,6 +406,8 @@ export function FlashLoanInterface() {
           connection,
           slippageBps: slippageBps,
           preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
+          onlyDirectRoutes: onlyDirectRoutes,
+          useJitoBundle: useJitoBundle,
         });
 
         transaction = result.transaction;
@@ -1026,6 +1032,72 @@ export function FlashLoanInterface() {
                         </div>
                         <p className="text-xs text-slate-500">
                           限制路由可减少交易大小，但可能错过最优价格
+                        </p>
+                      </div>
+
+                      {/* 仅直接路由 */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-slate-300 text-sm">路由类型</Label>
+                          <span className="text-xs text-slate-500">
+                            {onlyDirectRoutes ? '仅直接' : '智能路由'}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={!onlyDirectRoutes ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setOnlyDirectRoutes(false)}
+                            className="flex-1 text-xs"
+                          >
+                            智能路由
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={onlyDirectRoutes ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setOnlyDirectRoutes(true)}
+                            className="flex-1 text-xs"
+                          >
+                            仅直接路由
+                          </Button>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          直接路由交易更小但价格可能较差，智能路由寻找最优价格
+                        </p>
+                      </div>
+
+                      {/* Jito Bundle */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-slate-300 text-sm">Jito Bundle</Label>
+                          <span className="text-xs text-slate-500">
+                            {useJitoBundle ? '已启用' : '已禁用'}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={!useJitoBundle ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setUseJitoBundle(false)}
+                            className="flex-1 text-xs"
+                          >
+                            禁用
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={useJitoBundle ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setUseJitoBundle(true)}
+                            className="flex-1 text-xs"
+                          >
+                            启用
+                          </Button>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          Jito Bundle 可绕过交易大小限制，适用于复杂路由的大额交易
                         </p>
                       </div>
 
