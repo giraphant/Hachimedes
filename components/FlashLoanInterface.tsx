@@ -628,7 +628,7 @@ export function FlashLoanInterface() {
                           {vaultConfig.name}
                         </span>
                         <span className="text-slate-500">
-                          Max: {vaultConfig.maxLtv}% · 清算: {vaultConfig.liquidationLtv}%
+                          最大:{vaultConfig.maxLtv}% · 清算:{vaultConfig.liquidationLtv}%
                         </span>
                       </div>
 
@@ -636,7 +636,7 @@ export function FlashLoanInterface() {
                       {positionInfo.ltv !== undefined && (
                         <div className="space-y-3">
                           <div className="flex items-end justify-between">
-                            <span className="text-sm text-slate-400">健康度</span>
+                            <span className="text-sm text-slate-400">清算阈线(LTV)</span>
                             <div className="flex items-center gap-2">
                               <div className={`text-4xl font-bold ${
                                 positionInfo.ltv < 70 ? 'text-green-400' :
@@ -680,7 +680,7 @@ export function FlashLoanInterface() {
                           {/* 区间说明 */}
                           <div className="flex justify-between text-xs text-slate-500">
                             <span>{positionInfo.ltv.toFixed(1)}%</span>
-                            <span>Max: L.T. {vaultConfig.liquidationLtv}%</span>
+                            <span>清算:{vaultConfig.liquidationLtv}%</span>
                           </div>
                         </div>
                       )}
