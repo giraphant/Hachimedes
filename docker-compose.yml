@@ -5,8 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "28848:28848"
+    # No ports exposed - only accessible via Docker network
     environment:
       - NODE_ENV=production
       - PORT=28848
