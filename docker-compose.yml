@@ -5,9 +5,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    # Bind to localhost only - not publicly accessible but Cloudflare Tunnel can reach it
-    ports:
-      - "127.0.0.1:28848:28848"
     environment:
       - NODE_ENV=production
       - PORT=28848
