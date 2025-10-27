@@ -34,6 +34,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# Copy environment file if exists
+COPY --from=builder /app/.env.local* ./ || true
+
 # Set correct permissions
 RUN chown -R nextjs:nodejs /app
 
@@ -41,4 +44,5 @@ USER nextjs
 
 EXPOSE 28848
 
-CMD ["node", "server.js"]
+# Start server with explicit hostname binding
+CMD ["sh", "-c", "node server.js"]
