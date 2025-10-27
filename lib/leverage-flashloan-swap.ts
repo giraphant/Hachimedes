@@ -94,8 +94,6 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
           amount: flashLoanAmountRaw,
           slippageBps,
           dexes: preferredDexes,
-          maxAccounts: 20, // 限制账户数量,减少 TX 大小
-          onlyDirectRoutes: true, // 只用直接路由,避免多跳
         });
         console.log('✓ Got quote from preferred DEXes');
       } catch (e) {
@@ -117,8 +115,6 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
             amount: flashLoanAmountRaw,
             slippageBps,
             dexes: [dex], // 只用单个 DEX
-            maxAccounts: 20, // 限制账户数量
-            onlyDirectRoutes: true, // 只用直接路由
           });
           console.log(`✓ Got quote from ${dex}`);
           break; // 找到就用
@@ -128,16 +124,14 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
       }
     }
 
-    // 如果所有单 DEX 都失败，使用默认（但仍然限制）
+    // 如果所有单 DEX 都失败，使用默认路由（无限制）
     if (!quoteResponse) {
-      console.log('All single DEX failed, using default route with limits...');
+      console.log('All single DEX failed, using default route...');
       quoteResponse = await jupiterApi.quoteGet({
         inputMint: debtMint.toString(),
         outputMint: collateralMint.toString(),
         amount: flashLoanAmountRaw,
         slippageBps,
-        maxAccounts: 25, // 默认路由允许稍多一点账户
-        onlyDirectRoutes: false, // 允许多跳但限制账户数
       });
     }
 
