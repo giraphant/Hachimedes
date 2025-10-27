@@ -41,7 +41,5 @@ RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 
-EXPOSE 28848
-
 # Use next start with explicit hostname binding
 CMD ["npm", "run", "start"]
