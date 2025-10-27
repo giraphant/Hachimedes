@@ -79,15 +79,6 @@ export function FlashLoanInterface() {
   const [priorityFee, setPriorityFee] = useState<'default' | 'fast' | 'turbo'>('default');
   const [selectedDexes, setSelectedDexes] = useState<string[]>([]); // 选中的 DEX 列表，空数组表示自动选择
 
-  // 计算优先费用（lamports）
-  const priorityFeeLamports = useMemo(() => {
-    switch (priorityFee) {
-      case 'fast': return 10000; // 0.00001 SOL
-      case 'turbo': return 50000; // 0.00005 SOL
-      default: return 0;
-    }
-  }, [priorityFee]);
-
   // 计算预览值
   const previewData = useMemo(() => {
     if (!positionInfo || !depositAmount || isNaN(parseFloat(depositAmount)) || positionInfo.ltv === undefined) {
@@ -345,7 +336,6 @@ export function FlashLoanInterface() {
           positionId: selectedPositionId!,
           connection,
           slippageBps: slippageBps,
-          priorityFeeLamports: priorityFeeLamports,
           preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
         });
 
@@ -372,7 +362,6 @@ export function FlashLoanInterface() {
           positionId: selectedPositionId!,
           connection,
           slippageBps: slippageBps,
-          priorityFeeLamports: priorityFeeLamports,
           preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
         });
 
