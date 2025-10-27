@@ -29,10 +29,12 @@ ENV HOSTNAME=0.0.0.0
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy necessary files from builder
+# Copy all necessary files from builder
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/next.config.js ./
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
 
 # Set correct permissions
 RUN chown -R nextjs:nodejs /app
@@ -41,4 +43,5 @@ USER nextjs
 
 EXPOSE 28848
 
-CMD ["node", "server.js"]
+# Use next start with explicit hostname binding
+CMD ["npm", "run", "start"]
