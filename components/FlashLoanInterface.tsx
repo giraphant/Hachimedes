@@ -344,6 +344,15 @@ export function FlashLoanInterface() {
       return;
     }
 
+    // 如果使用直接路由，提前警告
+    if (onlyDirectRoutes) {
+      toast({
+        title: '⚠️ 使用直接路由',
+        description: '直接路由可能导致较高磨损，请注意检查交易详情',
+        variant: 'default',
+      });
+    }
+
     setIsLoading(true);
 
     try {
@@ -487,11 +496,28 @@ export function FlashLoanInterface() {
       await loadPositionInfo();
     } catch (error: any) {
       console.error('Flash loan error:', error);
-      toast({
-        title: '闪电贷执行失败',
-        description: error.message || '发生未知错误',
-        variant: 'destructive',
-      });
+
+      // 检查是否是交易过大错误
+      const isTxTooLarge = error.message && (
+        error.message.includes('Transaction exceeds maximum size') ||
+        error.message.includes('Transaction too large')
+      );
+
+      if (isTxTooLarge && !onlyDirectRoutes) {
+        // TX 过大且未使用直接路由，提示切换
+        toast({
+          title: '⚠️ 智能路由交易过大',
+          description: '请尝试在高级设置中切换到「仅直接路由」，或启用 Jito Bundle',
+          variant: 'destructive',
+        });
+      } else {
+        // 其他错误，正常显示
+        toast({
+          title: '闪电贷执行失败',
+          description: error.message || '发生未知错误',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
