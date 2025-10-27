@@ -1,4 +1,4 @@
-import { Connection, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction, ComputeBudgetProgram } from '@solana/web3.js';
+import { Connection, PublicKey, TransactionMessage, VersionedTransaction, TransactionInstruction } from '@solana/web3.js';
 import { getFlashBorrowIx, getFlashPaybackIx } from '@jup-ag/lend/flashloan';
 import { getOperateIx } from '@jup-ag/lend/borrow';
 import { createJupiterApiClient } from '@jup-ag/api';
@@ -13,9 +13,8 @@ export interface LeverageFlashLoanSwapParams {
   vaultId: number;
   positionId: number;
   connection: Connection;
-  slippageBps?: number;
-  priorityFeeLamports?: number; // 优先费用（lamports）
-  preferredDexes?: string[];    // 偏好的 DEX 列表
+  slippageBps?: number;       // 滑点容忍度（basis points），默认 10 (0.1%)
+  preferredDexes?: string[];  // 偏好的 DEX 列表
 }
 
 /**
@@ -46,8 +45,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
     vaultId,
     positionId,
     connection,
-    slippageBps = 50,
-    priorityFeeLamports = 0,
+    slippageBps = 10, // 默认 0.1% 滑点
     preferredDexes,
   } = params;
 
@@ -61,35 +59,8 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
   try {
     const flashLoanAmountRaw = Math.floor(flashLoanAmount * 1e6);
 
-    // Step 0: Compute Budget - 设置计算单元限制和优先费用
-    console.log('\n[0/6] Setting up Compute Budget...');
-    const computeBudgetIxs: TransactionInstruction[] = [];
-
-    // 设置计算单元限制（官方使用约 400k-600k，我们设置 600k 以确保足够）
-    const computeUnitLimit = 600_000;
-    computeBudgetIxs.push(
-      ComputeBudgetProgram.setComputeUnitLimit({
-        units: computeUnitLimit,
-      })
-    );
-    console.log(`→ Set compute unit limit: ${computeUnitLimit}`);
-
-    // 如果用户指定了优先费用，设置计算单元价格
-    if (priorityFeeLamports > 0) {
-      console.log(`→ Adding priority fee: ${priorityFeeLamports} lamports`);
-      // 设置计算单元价格（micro-lamports per compute unit）
-      const computeUnitPrice = Math.floor((priorityFeeLamports * 1_000_000) / computeUnitLimit);
-      computeBudgetIxs.push(
-        ComputeBudgetProgram.setComputeUnitPrice({
-          microLamports: computeUnitPrice,
-        })
-      );
-    } else {
-      console.log('→ No priority fee (using default)');
-    }
-
     // Step 1: Flash Borrow USDS from liquidity pool
-    console.log('\n[1/6] Building Flash Borrow instruction...');
+    console.log('\n[1/5] Building Flash Borrow instruction...');
     const flashBorrowIx = await getFlashBorrowIx({
       asset: debtMint, // 借 USDS
       amount: new BN(flashLoanAmountRaw),
@@ -99,7 +70,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
     console.log('✓ Flash Borrow instruction ready');
 
     // Step 2: Swap USDS → JLP via Jupiter
-    console.log('\n[2/6] Getting Jupiter swap quote...');
+    console.log('\n[2/5] Getting Jupiter swap quote...');
 
     // 手动计算用户的 token accounts（避免 RPC 调用和不必要的 setup instructions）
     const userJlpAta = getAssociatedTokenAddressSync(collateralMint, userPublicKey);
@@ -123,6 +94,8 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
           amount: flashLoanAmountRaw,
           slippageBps,
           dexes: preferredDexes,
+          maxAccounts: 20, // 限制账户数量,减少 TX 大小
+          onlyDirectRoutes: true, // 只用直接路由,避免多跳
         });
         console.log('✓ Got quote from preferred DEXes');
       } catch (e) {
@@ -144,6 +117,8 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
             amount: flashLoanAmountRaw,
             slippageBps,
             dexes: [dex], // 只用单个 DEX
+            maxAccounts: 20, // 限制账户数量
+            onlyDirectRoutes: true, // 只用直接路由
           });
           console.log(`✓ Got quote from ${dex}`);
           break; // 找到就用
@@ -153,14 +128,16 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
       }
     }
 
-    // 如果所有单 DEX 都失败，使用默认
+    // 如果所有单 DEX 都失败，使用默认（但仍然限制）
     if (!quoteResponse) {
-      console.log('All single DEX failed, using default route...');
+      console.log('All single DEX failed, using default route with limits...');
       quoteResponse = await jupiterApi.quoteGet({
         inputMint: debtMint.toString(),
         outputMint: collateralMint.toString(),
         amount: flashLoanAmountRaw,
         slippageBps,
+        maxAccounts: 25, // 默认路由允许稍多一点账户
+        onlyDirectRoutes: false, // 允许多跳但限制账户数
       });
     }
 
@@ -229,7 +206,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
     console.log('✓ Swap instructions ready:', swapInstructions.length);
 
     // Step 3: Operate - 同时存入抵押品 + 借出债务（用于还 Flash Loan）
-    console.log('\n[3/6] Building Operate instruction (deposit + borrow)...');
+    console.log('\n[3/5] Building Operate instruction (deposit + borrow)...');
 
     // 🎯 OPTIMIZATION: Round up to safe amount to avoid init instructions
     // 对于 Leverage，我们需要借出的 USDS 要能还 Flash Loan
@@ -302,7 +279,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
     }
 
     // Step 4: Flash Payback USDS to liquidity pool
-    console.log('\n[4/6] Building Flash Payback instruction...');
+    console.log('\n[4/5] Building Flash Payback instruction...');
     const flashPaybackIx = await getFlashPaybackIx({
       asset: debtMint, // 还 USDS
       amount: new BN(flashLoanAmountRaw),
@@ -312,9 +289,8 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
     console.log('✓ Flash Payback instruction ready');
 
     // Step 5: Combine all instructions
-    console.log('\n[5/6] Combining all instructions...');
+    console.log('\n[5/5] Combining all instructions...');
     const allInstructions: TransactionInstruction[] = [
-      ...computeBudgetIxs,
       flashBorrowIx,
       ...swapInstructions,
       ...operateInstructions,
@@ -323,7 +299,6 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
 
     console.log('\n═══ Transaction Summary ═══');
     console.log('Total instructions:', allInstructions.length);
-    console.log('  Compute Budget:', computeBudgetIxs.length, priorityFeeLamports > 0 ? '(Limit + Price)' : '(Limit only)');
     console.log('  Flash Borrow: 1');
     console.log('  Swap (single DEX): ', swapInstructions.length);
     console.log('  Operate: ', operateInstructions.length, needsInit ? '❌ (includes init - UNEXPECTED!)' : '✅ (operate only)');
@@ -368,8 +343,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
 
     console.log('Address lookup tables:', addressLookupTableAccounts.length);
 
-    // Step 6: Build versioned transaction
-    console.log('\n[6/6] Building final versioned transaction...');
+    // Build versioned transaction
     const latestBlockhash = await connection.getLatestBlockhash('finalized');
 
     const messageV0 = new TransactionMessage({
