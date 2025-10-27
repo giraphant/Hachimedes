@@ -72,7 +72,11 @@ export async function findUserPositionsByNFT(
 
       // 分成更小的块，每 500 个 IDs 让出主线程一次
       const chunkSize = 500;
+      let shouldBreakBatch = false;
+
       for (let chunkStart = batch.start; chunkStart < batch.end; chunkStart += chunkSize) {
+        if (shouldBreakBatch) break;
+
         const chunkEnd = Math.min(chunkStart + chunkSize, batch.end);
 
         // 让出主线程，允许 UI 更新（加载图标能转）
@@ -93,6 +97,7 @@ export async function findUserPositionsByNFT(
             // 如果找到了所有 NFTs，提前退出
             if (foundMints.size === nftsToFind.length) {
               console.log(`All ${nftsToFind.length} positions found!`);
+              shouldBreakBatch = true;
               break;
             }
           }
@@ -101,11 +106,6 @@ export async function findUserPositionsByNFT(
           if (onProgress && positionId % 100 === 0) {
             onProgress(positionId, maxPositionsToCheck);
           }
-        }
-
-        // 找到了所有 positions，跳出外层循环
-        if (foundMints.size === nftsToFind.length) {
-          break;
         }
       }
 
