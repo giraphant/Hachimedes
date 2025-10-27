@@ -57,7 +57,7 @@ export function createJitoTipInstruction(
  * Send a versioned transaction via Jito Bundle (HTTP API)
  * @param connection - Solana connection
  * @param transaction - The versioned transaction to send (must be signed)
- * @param tipAmount - Tip amount in lamports (default: 10000 = 0.00001 SOL)
+ * @param tipAmount - Tip amount in lamports (default: 10000 = 0.00001 SOL, minimum: 1000)
  * @param region - Jito region (default: mainnet)
  */
 export async function sendJitoBundle(
@@ -72,19 +72,26 @@ export async function sendJitoBundle(
   console.log('Region:', region);
   console.log('Tip Amount:', tipAmount, 'lamports');
 
+  // Enforce minimum tip
+  if (tipAmount < 1000) {
+    console.warn('⚠️  Tip amount below Jito minimum (1000 lamports), adjusting...');
+    tipAmount = 1000;
+  }
+
   const apiUrl = JITO_API_URLS[region];
 
-  // Serialize the main transaction
-  const serializedTx = bs58.encode(transaction.serialize());
+  // Serialize the transaction to base64 (NOT base58!)
+  const serializedTx = Buffer.from(transaction.serialize()).toString('base64');
 
-  // Create bundle (just the main transaction for now)
-  // Note: Tip is handled by Jito automatically via priorityFee or we can add explicit tip TX
+  // Bundle contains just the main transaction
+  // Tip should be added as an instruction INSIDE the transaction, not as separate TX
   const bundle = [serializedTx];
 
   console.log('Sending bundle to Jito HTTP API...');
+  console.log('Transaction size:', transaction.serialize().length, 'bytes');
 
   try {
-    // Send bundle via HTTP POST
+    // Send bundle via HTTP POST with proper encoding parameter
     const response = await fetch(`${apiUrl}/bundles`, {
       method: 'POST',
       headers: {
@@ -94,18 +101,24 @@ export async function sendJitoBundle(
         jsonrpc: '2.0',
         id: 1,
         method: 'sendBundle',
-        params: [bundle],
+        params: [
+          bundle,
+          {
+            encoding: 'base64', // IMPORTANT: Must specify encoding
+          }
+        ],
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
     }
 
     const data = await response.json();
 
     if (data.error) {
-      throw new Error(`Jito API error: ${data.error.message}`);
+      throw new Error(`Jito API error: ${JSON.stringify(data.error)}`);
     }
 
     const bundleId = data.result;

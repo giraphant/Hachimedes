@@ -438,16 +438,32 @@ export function FlashLoanInterface() {
       const signedTransaction = await signTransaction(transaction);
 
       // 发送交易
-      toast({
-        title: '正在发送交易',
-        description: '请稍候...',
-      });
+      let signature: string;
 
-      // 发送 versioned transaction
-      const signature = await connection.sendTransaction(signedTransaction, {
-        skipPreflight: false,
-        preflightCommitment: 'confirmed',
-      });
+      if (useJitoBundle) {
+        // 使用 Jito Bundle 发送
+        toast({
+          title: '正在通过 Jito Bundle 发送',
+          description: '使用 Jito 可绕过交易大小限制...',
+        });
+
+        const { sendJitoBundle } = await import('@/lib/jito-bundle');
+        const bundleId = await sendJitoBundle(connection, signedTransaction);
+
+        // Bundle ID 就是 signature
+        signature = bundleId;
+      } else {
+        // 普通发送
+        toast({
+          title: '正在发送交易',
+          description: '请稍候...',
+        });
+
+        signature = await connection.sendTransaction(signedTransaction, {
+          skipPreflight: false,
+          preflightCommitment: 'confirmed',
+        });
+      }
 
       // 确认交易
       toast({
