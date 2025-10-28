@@ -941,143 +941,7 @@ export function FlashLoanInterface() {
                         </p>
                       </div>
 
-                      {/* 滑点设置 */}
-                      <div className="space-y-3">
-                        <Label className="text-slate-300 text-sm">滑点容忍度</Label>
-                        <div className="flex gap-2">
-                          {[10, 50, 100, 300].map((bps) => (
-                            <Button
-                              key={bps}
-                              type="button"
-                              variant={slippageBps === bps ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setSlippageBps(bps)}
-                              className="flex-1 text-xs"
-                            >
-                              {(bps / 100).toFixed(1)}%
-                            </Button>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            value={slippageBps / 100}
-                            onChange={(e) => {
-                              const value = parseFloat(e.target.value) * 100;
-                              if (!isNaN(value) && value >= 0 && value <= 5000) {
-                                setSlippageBps(Math.round(value));
-                              }
-                            }}
-                            className="bg-slate-800 border-slate-700 text-white text-sm"
-                            step="0.1"
-                            min="0"
-                            max="50"
-                          />
-                          <span className="text-xs text-slate-400 whitespace-nowrap">%</span>
-                        </div>
-                        <p className="text-xs text-slate-500">
-                          当前: {(slippageBps / 100).toFixed(2)}% ({slippageBps} bps)
-                        </p>
-                      </div>
-
-                      {/* 优先费用 */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-slate-300 text-sm">优先费用</Label>
-                          <span className="text-xs text-slate-500">
-                            {priorityFee === 'default' && '默认'}
-                            {priorityFee === 'fast' && '+0.00001 SOL'}
-                            {priorityFee === 'turbo' && '+0.00005 SOL'}
-                          </span>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant={priorityFee === 'default' ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setPriorityFee('default')}
-                            className="flex-1 text-xs"
-                          >
-                            默认
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={priorityFee === 'fast' ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setPriorityFee('fast')}
-                            className="flex-1 text-xs"
-                          >
-                            快速
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={priorityFee === 'turbo' ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setPriorityFee('turbo')}
-                            className="flex-1 text-xs"
-                          >
-                            极速
-                          </Button>
-                        </div>
-                        <p className="text-xs text-slate-500">
-                          更高的优先费用可以加快交易确认速度
-                        </p>
-                      </div>
-
-                      {/* DEX 选择 - 多选 */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-slate-300 text-sm">DEX 路由</Label>
-                          <span className="text-xs text-slate-500">
-                            {selectedDexes.length === 0 ? '自动' : `${selectedDexes.length} 个`}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          {['Orca', 'Raydium', 'Whirlpool', 'Meteora'].map((dex) => (
-                            <Button
-                              key={dex}
-                              type="button"
-                              variant={selectedDexes.includes(dex) ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => {
-                                setSelectedDexes(prev =>
-                                  prev.includes(dex)
-                                    ? prev.filter(d => d !== dex)
-                                    : [...prev, dex]
-                                );
-                              }}
-                              className="text-xs"
-                            >
-                              {dex}
-                            </Button>
-                          ))}
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedDexes([])}
-                            className="flex-1 text-xs"
-                          >
-                            自动选择
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedDexes(['Orca', 'Raydium', 'Whirlpool', 'Meteora'])}
-                            className="flex-1 text-xs"
-                          >
-                            全选
-                          </Button>
-                        </div>
-                        <p className="text-xs text-slate-500">
-                          限制路由可减少交易大小，但可能错过最优价格
-                        </p>
-                      </div>
-
-                      {/* 仅直接路由 */}
+                      {/* 路由类型 - 优先级最高 */}
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <Label className="text-slate-300 text-sm">路由类型</Label>
@@ -1139,7 +1003,123 @@ export function FlashLoanInterface() {
                           </Button>
                         </div>
                         <p className="text-xs text-slate-500">
-                          Jito Bundle 可绕过交易大小限制，适用于复杂路由的大额交易
+                          绕过交易大小限制，适合复杂路由（需支付小额 tip）
+                        </p>
+                      </div>
+
+                      {/* 滑点设置 */}
+                      <div className="space-y-3">
+                        <Label className="text-slate-300 text-sm">滑点容忍度</Label>
+                        <div className="flex gap-2">
+                          {[10, 50, 100, 300].map((bps) => (
+                            <Button
+                              key={bps}
+                              type="button"
+                              variant={slippageBps === bps ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setSlippageBps(bps)}
+                              className="flex-1 text-xs"
+                            >
+                              {(bps / 100).toFixed(1)}%
+                            </Button>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={slippageBps / 100}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) * 100;
+                              if (!isNaN(value) && value >= 0 && value <= 5000) {
+                                setSlippageBps(Math.round(value));
+                              }
+                            }}
+                            className="bg-slate-800 border-slate-700 text-white text-sm"
+                            step="0.1"
+                            min="0"
+                            max="50"
+                          />
+                          <span className="text-xs text-slate-400 whitespace-nowrap">%</span>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          当前: {(slippageBps / 100).toFixed(2)}% ({slippageBps} bps)
+                        </p>
+                      </div>
+
+                      {/* DEX 选择 - 多选 (移除自动/全选按钮) */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-slate-300 text-sm">DEX 限制</Label>
+                          <span className="text-xs text-slate-500">
+                            {selectedDexes.length === 0 ? '自动' : `${selectedDexes.length} 个`}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {['Orca', 'Raydium', 'Whirlpool', 'Meteora'].map((dex) => (
+                            <Button
+                              key={dex}
+                              type="button"
+                              variant={selectedDexes.includes(dex) ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => {
+                                setSelectedDexes(prev =>
+                                  prev.includes(dex)
+                                    ? prev.filter(d => d !== dex)
+                                    : [...prev, dex]
+                                );
+                              }}
+                              className="text-xs"
+                            >
+                              {dex}
+                            </Button>
+                          ))}
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          未选择表示自动选择所有 DEX，限制可减少 TX 大小
+                        </p>
+                      </div>
+
+                      {/* 优先费用 */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-slate-300 text-sm">优先费用</Label>
+                          <span className="text-xs text-slate-500">
+                            {priorityFee === 'default' && '默认'}
+                            {priorityFee === 'fast' && '+0.00001 SOL'}
+                            {priorityFee === 'turbo' && '+0.00005 SOL'}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={priorityFee === 'default' ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPriorityFee('default')}
+                            className="flex-1 text-xs"
+                          >
+                            默认
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={priorityFee === 'fast' ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPriorityFee('fast')}
+                            className="flex-1 text-xs"
+                          >
+                            快速
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={priorityFee === 'turbo' ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPriorityFee('turbo')}
+                            className="flex-1 text-xs"
+                          >
+                            极速
+                          </Button>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          更高的优先费用可以加快交易确认速度
                         </p>
                       </div>
 
