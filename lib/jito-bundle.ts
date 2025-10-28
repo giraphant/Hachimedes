@@ -134,6 +134,85 @@ export async function sendJitoBundle(
 }
 
 /**
+ * Send multiple transactions via Jito Bundle (HTTP API)
+ * @param connection - Solana connection
+ * @param transactions - Array of signed versioned transactions (max 5)
+ * @param region - Jito region (default: mainnet)
+ */
+export async function sendJitoMultiTxBundle(
+  connection: Connection,
+  transactions: VersionedTransaction[],
+  region: keyof typeof JITO_API_URLS = 'mainnet'
+): Promise<string> {
+  console.log('\n════════════════════════════════════════');
+  console.log('  Sending Multi-TX Bundle via Jito');
+  console.log('════════════════════════════════════════');
+  console.log('Region:', region);
+  console.log('Number of transactions:', transactions.length);
+
+  if (transactions.length === 0) {
+    throw new Error('Bundle must contain at least 1 transaction');
+  }
+
+  if (transactions.length > 5) {
+    throw new Error('Bundle can contain at most 5 transactions');
+  }
+
+  const apiUrl = JITO_API_URLS[region];
+
+  // Serialize all transactions to base64
+  const bundle = transactions.map((tx, i) => {
+    const serialized = Buffer.from(tx.serialize()).toString('base64');
+    console.log(`TX${i + 1} size:`, tx.serialize().length, 'bytes');
+    return serialized;
+  });
+
+  console.log('Sending bundle to Jito HTTP API...');
+
+  try {
+    // Send bundle via HTTP POST with proper encoding parameter
+    const response = await fetch(`${apiUrl}/bundles`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'sendBundle',
+        params: [
+          bundle,
+          {
+            encoding: 'base64', // IMPORTANT: Must specify encoding
+          }
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+    }
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(`Jito API error: ${JSON.stringify(data.error)}`);
+    }
+
+    const bundleId = data.result;
+    console.log('✓ Multi-TX Bundle sent successfully!');
+    console.log('Bundle ID:', bundleId);
+
+    return bundleId;
+
+  } catch (error) {
+    console.error('❌ Failed to send Jito multi-TX bundle:', error);
+    throw new Error(`Jito bundle failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
  * Check if Jito bundle is needed based on transaction size
  * @param transaction - The transaction to check
  * @returns true if TX is too large and needs Jito
