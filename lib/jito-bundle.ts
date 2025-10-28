@@ -69,7 +69,7 @@ export async function sendJitoBundle(
   console.log('\n════════════════════════════════════════');
   console.log('  Sending transaction via Jito Bundle');
   console.log('════════════════════════════════════════');
-  console.log('Region:', region);
+  console.log('Initial Region:', region);
   console.log('Tip Amount:', tipAmount, 'lamports');
 
   // Enforce minimum tip
@@ -77,8 +77,6 @@ export async function sendJitoBundle(
     console.warn('⚠️  Tip amount below Jito minimum (1000 lamports), adjusting...');
     tipAmount = 1000;
   }
-
-  const apiUrl = JITO_API_URLS[region];
 
   // Serialize the transaction to base64 (NOT base58!)
   const serializedTx = Buffer.from(transaction.serialize()).toString('base64');
@@ -90,15 +88,23 @@ export async function sendJitoBundle(
   console.log('Sending bundle to Jito HTTP API...');
   console.log('Transaction size:', transaction.serialize().length, 'bytes');
 
-  const maxRetries = 3;
+  const maxRetries = 5;
   let lastError: any;
+  // Try different regions on retry to avoid per-region rate limits (1 req/sec/IP/region)
+  const regions: Array<keyof typeof JITO_API_URLS> = ['ny', 'frankfurt', 'amsterdam', 'tokyo', 'mainnet'];
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
+      // Use different region on each attempt to spread load
+      const currentRegion = regions[(attempt - 1) % regions.length];
+      const apiUrl = JITO_API_URLS[currentRegion];
+
       if (attempt > 1) {
-        const delay = attempt * 2000; // 2s, 4s, 6s
-        console.log(`⏳ Retry attempt ${attempt}/${maxRetries} after ${delay}ms...`);
+        const delay = attempt * 5000; // 5s, 10s, 15s, 20s, 25s - respect 1req/sec limit
+        console.log(`⏳ Retry attempt ${attempt}/${maxRetries} after ${delay / 1000}s (region: ${currentRegion})...`);
         await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        console.log(`🌍 Using region: ${currentRegion}`);
       }
 
       // Send bundle via HTTP POST with proper encoding parameter
@@ -188,7 +194,7 @@ export async function sendJitoMultiTxBundle(
   console.log('\n════════════════════════════════════════');
   console.log('  Sending Multi-TX Bundle via Jito');
   console.log('════════════════════════════════════════');
-  console.log('Region:', region);
+  console.log('Initial Region:', region);
   console.log('Number of transactions:', transactions.length);
 
   if (transactions.length === 0) {
@@ -199,8 +205,6 @@ export async function sendJitoMultiTxBundle(
     throw new Error('Bundle can contain at most 5 transactions');
   }
 
-  const apiUrl = JITO_API_URLS[region];
-
   // Serialize all transactions to base64
   const bundle = transactions.map((tx, i) => {
     const serialized = Buffer.from(tx.serialize()).toString('base64');
@@ -210,15 +214,23 @@ export async function sendJitoMultiTxBundle(
 
   console.log('Sending bundle to Jito HTTP API...');
 
-  const maxRetries = 3;
+  const maxRetries = 5;
   let lastError: any;
+  // Try different regions on retry to avoid per-region rate limits (1 req/sec/IP/region)
+  const regions: Array<keyof typeof JITO_API_URLS> = ['ny', 'frankfurt', 'amsterdam', 'tokyo', 'mainnet'];
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
+      // Use different region on each attempt to spread load
+      const currentRegion = regions[(attempt - 1) % regions.length];
+      const apiUrl = JITO_API_URLS[currentRegion];
+
       if (attempt > 1) {
-        const delay = attempt * 2000; // 2s, 4s, 6s
-        console.log(`⏳ Retry attempt ${attempt}/${maxRetries} after ${delay}ms...`);
+        const delay = attempt * 5000; // 5s, 10s, 15s, 20s, 25s - respect 1req/sec limit
+        console.log(`⏳ Retry attempt ${attempt}/${maxRetries} after ${delay / 1000}s (region: ${currentRegion})...`);
         await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        console.log(`🌍 Using region: ${currentRegion}`);
       }
 
       // Send bundle via HTTP POST with proper encoding parameter

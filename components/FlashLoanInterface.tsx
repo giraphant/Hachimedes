@@ -1030,17 +1030,20 @@ export function FlashLoanInterface() {
                           >
                             0.5%
                           </Button>
-                          <div className="flex-1 flex items-center gap-1 bg-slate-800/50 rounded px-2 border border-slate-700">
+                          <div className="flex-1 flex items-center justify-center gap-1 bg-slate-800/50 rounded px-2 border border-slate-700">
                             <Input
                               type="number"
-                              value={slippageBps / 100}
+                              value={slippageBps / 100 || ''}
+                              placeholder="0.00"
                               onChange={(e) => {
                                 const value = parseFloat(e.target.value) * 100;
                                 if (!isNaN(value) && value >= 0 && value <= 5000) {
                                   setSlippageBps(Math.round(value));
+                                } else if (e.target.value === '') {
+                                  setSlippageBps(0);
                                 }
                               }}
-                              className="bg-transparent border-0 text-white text-xs w-full p-0 h-6 focus-visible:ring-0 focus-visible:ring-offset-0"
+                              className="bg-transparent border-0 text-white text-xs text-center w-full p-0 h-6 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-slate-500"
                               step="0.1"
                               min="0"
                               max="50"
