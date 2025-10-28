@@ -289,39 +289,8 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
     });
     console.log('✓ Flash Payback instruction ready');
 
-    // Step 5: Combine all instructions
-    console.log('\n[5/5] Combining all instructions...');
-    const allInstructions: TransactionInstruction[] = [
-      flashBorrowIx,
-      ...swapInstructions,
-      ...operateInstructions,
-      flashPaybackIx,
-    ];
-
-    // Add Jito tip if using bundle
-    if (useJitoBundle) {
-      console.log('\n💰 Adding Jito tip instruction...');
-      const { createJitoTipInstruction } = await import('./jito-bundle');
-      const tipIx = createJitoTipInstruction(userPublicKey, 10000); // 0.00001 SOL tip
-      allInstructions.push(tipIx);
-      console.log('✓ Jito tip added: 10000 lamports');
-    }
-
-    console.log('\n═══ Transaction Summary ═══');
-    console.log('Total instructions:', allInstructions.length);
-    console.log('  Flash Borrow: 1');
-    console.log('  Swap (single DEX): ', swapInstructions.length);
-    console.log('  Operate: ', operateInstructions.length, needsInit ? '❌ (includes init - UNEXPECTED!)' : '✅ (operate only)');
-    console.log('  Flash Payback: 1');
-    console.log('\n🎯 Optimization: Safe amount rounding to avoid tick initialization');
-    console.log('   Result: ' + (needsInit ? '❌ Failed (still needs init)' : '✅ Success (no init needed)'));
-
-    console.log('\n═══ Instruction Details ═══');
-    allInstructions.forEach((ix, i) => {
-      console.log(`${i + 1}. Program: ${ix.programId.toString().slice(0, 8)}..., Keys: ${ix.keys.length}, Data: ${ix.data.length} bytes`);
-    });
-
-    // Get address lookup tables
+    // Step 5: Get address lookup tables FIRST (needed for size testing)
+    console.log('\n[5/5] Preparing address lookup tables...');
     const addressLookupTableAccounts: any[] = [];
     const seenKeys = new Set<string>();
 
@@ -351,7 +320,64 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
       }
     }
 
-    console.log('Address lookup tables:', addressLookupTableAccounts.length);
+    console.log('✓ Address lookup tables loaded:', addressLookupTableAccounts.length);
+
+    // Step 6: Combine all instructions
+    console.log('\n[6/6] Combining all instructions...');
+    const allInstructions: TransactionInstruction[] = [
+      flashBorrowIx,
+      ...swapInstructions,
+      ...operateInstructions,
+      flashPaybackIx,
+    ];
+
+    // 🎯 IMPORTANT: Test if we can add Jito tip without breaking serialization
+    // Jito Bundle helps with TX size limit (1232 bytes), but wallets still need to sign
+    // If TX can't be serialized, even Jito can't help
+    if (useJitoBundle) {
+      console.log('\n💰 Testing if Jito tip can be added...');
+      const { createJitoTipInstruction } = await import('./jito-bundle');
+      const tipIx = createJitoTipInstruction(userPublicKey, 10000); // 0.00001 SOL tip
+
+      // Test if tip would break serialization
+      const testInstructions = [...allInstructions, tipIx];
+      const testBlockhash = await connection.getLatestBlockhash('finalized');
+      const testMessage = new TransactionMessage({
+        payerKey: userPublicKey,
+        recentBlockhash: testBlockhash.blockhash,
+        instructions: testInstructions,
+      }).compileToV0Message(addressLookupTableAccounts);
+
+      const testTx = new VersionedTransaction(testMessage);
+
+      try {
+        testTx.serialize();
+        // Success! We can add the tip
+        allInstructions.push(tipIx);
+        console.log('✓ Jito tip added: 10000 lamports');
+      } catch (e) {
+        console.warn('⚠️  Cannot add Jito tip - transaction would exceed serialization limit');
+        console.warn('   Jito Bundle will still be used, but without tip instruction');
+        console.warn('   Consider using "仅直接路由" to reduce transaction size');
+      }
+    }
+
+    console.log('\n═══ Transaction Summary ═══');
+    console.log('Total instructions:', allInstructions.length);
+    console.log('  Flash Borrow: 1');
+    console.log('  Swap (single DEX): ', swapInstructions.length);
+    console.log('  Operate: ', operateInstructions.length, needsInit ? '❌ (includes init - UNEXPECTED!)' : '✅ (operate only)');
+    console.log('  Flash Payback: 1');
+    if (useJitoBundle && allInstructions.length > 4 + swapInstructions.length + operateInstructions.length) {
+      console.log('  Jito Tip: 1');
+    }
+    console.log('\n🎯 Optimization: Safe amount rounding to avoid tick initialization');
+    console.log('   Result: ' + (needsInit ? '❌ Failed (still needs init)' : '✅ Success (no init needed)'));
+
+    console.log('\n═══ Instruction Details ═══');
+    allInstructions.forEach((ix, i) => {
+      console.log(`${i + 1}. Program: ${ix.programId.toString().slice(0, 8)}..., Keys: ${ix.keys.length}, Data: ${ix.data.length} bytes`);
+    });
 
     // Build versioned transaction
     const latestBlockhash = await connection.getLatestBlockhash('finalized');
