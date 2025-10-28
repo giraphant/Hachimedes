@@ -1010,7 +1010,26 @@ export function FlashLoanInterface() {
 
                       {/* 滑点设置 */}
                       <div className="space-y-2">
-                        <Label className="text-slate-300 text-xs">滑点容忍度</Label>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-slate-300 text-xs">滑点容忍度</Label>
+                          <div className="flex items-center gap-1 bg-slate-800/50 rounded px-2 py-0.5">
+                            <Input
+                              type="number"
+                              value={slippageBps / 100}
+                              onChange={(e) => {
+                                const value = parseFloat(e.target.value) * 100;
+                                if (!isNaN(value) && value >= 0 && value <= 5000) {
+                                  setSlippageBps(Math.round(value));
+                                }
+                              }}
+                              className="bg-transparent border-0 text-white text-xs w-12 p-0 h-5 focus-visible:ring-0 focus-visible:ring-offset-0"
+                              step="0.1"
+                              min="0"
+                              max="50"
+                            />
+                            <span className="text-xs text-slate-400">%</span>
+                          </div>
+                        </div>
                         <div className="flex gap-1.5">
                           {[10, 50, 100, 300].map((bps) => (
                             <Button
@@ -1024,23 +1043,6 @@ export function FlashLoanInterface() {
                               {(bps / 100).toFixed(1)}%
                             </Button>
                           ))}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            value={slippageBps / 100}
-                            onChange={(e) => {
-                              const value = parseFloat(e.target.value) * 100;
-                              if (!isNaN(value) && value >= 0 && value <= 5000) {
-                                setSlippageBps(Math.round(value));
-                              }
-                            }}
-                            className="bg-slate-800 border-slate-700 text-white text-xs h-8"
-                            step="0.1"
-                            min="0"
-                            max="50"
-                          />
-                          <span className="text-xs text-slate-400">%</span>
                         </div>
                       </div>
 
