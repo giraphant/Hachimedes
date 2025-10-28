@@ -331,9 +331,9 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
       flashPaybackIx,
     ];
 
-    // 🎯 IMPORTANT: Test if we can add Jito tip without breaking serialization
-    // Jito Bundle helps with TX size limit (1232 bytes), but wallets still need to sign
-    // If TX can't be serialized, even Jito can't help
+    // 🎯 Add Jito tip if using bundle (for faster execution and MEV protection)
+    // Note: Jito Bundle provides atomic multi-TX execution, but each individual TX
+    // still has serialization limits. For Flash Loans, we can't split into multiple TXs.
     if (useJitoBundle) {
       console.log('\n💰 Testing if Jito tip can be added...');
       const { createJitoTipInstruction } = await import('./jito-bundle');
@@ -356,9 +356,9 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
         allInstructions.push(tipIx);
         console.log('✓ Jito tip added: 10000 lamports');
       } catch (e) {
-        console.warn('⚠️  Cannot add Jito tip - transaction would exceed serialization limit');
-        console.warn('   Jito Bundle will still be used, but without tip instruction');
-        console.warn('   Consider using "仅直接路由" to reduce transaction size');
+        console.warn('⚠️  Cannot add Jito tip - transaction exceeds serialization limit');
+        console.warn('   Please use "仅直接路由" to reduce transaction size');
+        throw new Error('交易过大无法序列化。请在高级设置中启用「仅直接路由」以减小交易大小。');
       }
     }
 

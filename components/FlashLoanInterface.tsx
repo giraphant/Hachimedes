@@ -938,68 +938,8 @@ export function FlashLoanInterface() {
                         </h4>
                       </div>
 
-                      {/* 路由类型 - 优先级最高 */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-slate-300 text-xs">路由类型</Label>
-                          <span className="text-xs text-slate-500">
-                            {onlyDirectRoutes ? '直接' : '智能'}
-                          </span>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant={!onlyDirectRoutes ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setOnlyDirectRoutes(false)}
-                            className="flex-1 text-xs h-8"
-                          >
-                            智能路由
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={onlyDirectRoutes ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setOnlyDirectRoutes(true)}
-                            className="flex-1 text-xs h-8"
-                          >
-                            直接路由
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Jito Bundle */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-slate-300 text-xs">Jito Bundle</Label>
-                          <span className="text-xs text-slate-500">
-                            {useJitoBundle ? '开' : '关'}
-                          </span>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant={!useJitoBundle ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setUseJitoBundle(false)}
-                            className="flex-1 text-xs h-8"
-                          >
-                            关闭
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={useJitoBundle ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setUseJitoBundle(true)}
-                            className="flex-1 text-xs h-8"
-                          >
-                            开启
-                          </Button>
-                        </div>
-                      </div>
-
                       {/* 滑点设置 */}
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <Label className="text-slate-300 text-xs">滑点容忍度</Label>
                         <div className="flex gap-1.5">
                           {[10, 50, 100, 300].map((bps) => (
@@ -1034,8 +974,109 @@ export function FlashLoanInterface() {
                         </div>
                       </div>
 
-                      {/* DEX 选择 - 多选 */}
-                      <div className="space-y-2">
+                      {/* Jito Bundle */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-slate-300 text-xs">Jito Bundle</Label>
+                          <span className="text-xs text-slate-500">
+                            {useJitoBundle ? '开' : '关'}
+                          </span>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Button
+                            type="button"
+                            variant={!useJitoBundle ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setUseJitoBundle(false)}
+                            className="flex-1 text-xs h-7"
+                          >
+                            关闭
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={useJitoBundle ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setUseJitoBundle(true)}
+                            className="flex-1 text-xs h-7"
+                          >
+                            开启
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* 优先费用 */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-slate-300 text-xs">优先费用</Label>
+                          <span className="text-xs text-slate-500">
+                            {priorityFee === 'default' && '默认'}
+                            {priorityFee === 'fast' && '快'}
+                            {priorityFee === 'turbo' && '极速'}
+                          </span>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Button
+                            type="button"
+                            variant={priorityFee === 'default' ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPriorityFee('default')}
+                            className="flex-1 text-xs h-7"
+                          >
+                            默认
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={priorityFee === 'fast' ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPriorityFee('fast')}
+                            className="flex-1 text-xs h-7"
+                          >
+                            快速
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={priorityFee === 'turbo' ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPriorityFee('turbo')}
+                            className="flex-1 text-xs h-7"
+                          >
+                            极速
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* 路由类型 */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-slate-300 text-xs">路由类型</Label>
+                          <span className="text-xs text-slate-500">
+                            {onlyDirectRoutes ? '直接' : '智能'}
+                          </span>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Button
+                            type="button"
+                            variant={!onlyDirectRoutes ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setOnlyDirectRoutes(false)}
+                            className="flex-1 text-xs h-7"
+                          >
+                            智能路由
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={onlyDirectRoutes ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setOnlyDirectRoutes(true)}
+                            className="flex-1 text-xs h-7"
+                          >
+                            直接路由
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* DEX 限制 */}
+                      <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
                           <Label className="text-slate-300 text-xs">DEX 限制</Label>
                           <span className="text-xs text-slate-500">
@@ -1056,52 +1097,11 @@ export function FlashLoanInterface() {
                                     : [...prev, dex]
                                 );
                               }}
-                              className="text-xs h-8"
+                              className="text-xs h-7"
                             >
                               {dex}
                             </Button>
                           ))}
-                        </div>
-                      </div>
-
-                      {/* 优先费用 */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-slate-300 text-xs">优先费用</Label>
-                          <span className="text-xs text-slate-500">
-                            {priorityFee === 'default' && '默认'}
-                            {priorityFee === 'fast' && '快'}
-                            {priorityFee === 'turbo' && '极速'}
-                          </span>
-                        </div>
-                        <div className="flex gap-1.5">
-                          <Button
-                            type="button"
-                            variant={priorityFee === 'default' ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setPriorityFee('default')}
-                            className="flex-1 text-xs h-8"
-                          >
-                            默认
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={priorityFee === 'fast' ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setPriorityFee('fast')}
-                            className="flex-1 text-xs h-8"
-                          >
-                            快速
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={priorityFee === 'turbo' ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setPriorityFee('turbo')}
-                            className="flex-1 text-xs h-8"
-                          >
-                            极速
-                          </Button>
                         </div>
                       </div>
                     </div>
