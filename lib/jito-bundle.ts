@@ -14,6 +14,19 @@ const JITO_API_URLS = {
 };
 
 /**
+ * Get Jito API URL - prioritize custom endpoint (e.g. QuickNode) over public API
+ */
+function getJitoApiUrl(region: keyof typeof JITO_API_URLS = 'mainnet'): string {
+  // Check for custom Jito endpoint (e.g. QuickNode + Lil' JIT)
+  const customEndpoint = process.env.NEXT_PUBLIC_JITO_ENDPOINT;
+  if (customEndpoint && customEndpoint.trim()) {
+    return customEndpoint.endsWith('/') ? customEndpoint.slice(0, -1) : customEndpoint;
+  }
+  // Fallback to public Jito API
+  return JITO_API_URLS[region];
+}
+
+/**
  * Jito tip accounts (randomly selected for each bundle)
  */
 const JITO_TIP_ACCOUNTS = [
@@ -91,20 +104,22 @@ export async function sendJitoBundle(
   const maxRetries = 5;
   let lastError: any;
   // Try different regions on retry to avoid per-region rate limits (1 req/sec/IP/region)
+  // Only used if not using custom endpoint (QuickNode)
   const regions: Array<keyof typeof JITO_API_URLS> = ['ny', 'frankfurt', 'amsterdam', 'tokyo', 'mainnet'];
+  const useCustomEndpoint = !!process.env.NEXT_PUBLIC_JITO_ENDPOINT?.trim();
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Use different region on each attempt to spread load
+      // Use custom endpoint (QuickNode) or rotate through public regions
       const currentRegion = regions[(attempt - 1) % regions.length];
-      const apiUrl = JITO_API_URLS[currentRegion];
+      const apiUrl = getJitoApiUrl(currentRegion);
 
       if (attempt > 1) {
         const delay = attempt * 5000; // 5s, 10s, 15s, 20s, 25s - respect 1req/sec limit
-        console.log(`⏳ Retry attempt ${attempt}/${maxRetries} after ${delay / 1000}s (region: ${currentRegion})...`);
+        console.log(`⏳ Retry attempt ${attempt}/${maxRetries} after ${delay / 1000}s${useCustomEndpoint ? ' (QuickNode)' : ` (region: ${currentRegion})`}...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       } else {
-        console.log(`🌍 Using region: ${currentRegion}`);
+        console.log(`🌍 Using ${useCustomEndpoint ? 'QuickNode + Lil\' JIT' : `region: ${currentRegion}`}`);
       }
 
       // Send bundle via HTTP POST with proper encoding parameter
@@ -217,20 +232,22 @@ export async function sendJitoMultiTxBundle(
   const maxRetries = 5;
   let lastError: any;
   // Try different regions on retry to avoid per-region rate limits (1 req/sec/IP/region)
+  // Only used if not using custom endpoint (QuickNode)
   const regions: Array<keyof typeof JITO_API_URLS> = ['ny', 'frankfurt', 'amsterdam', 'tokyo', 'mainnet'];
+  const useCustomEndpoint = !!process.env.NEXT_PUBLIC_JITO_ENDPOINT?.trim();
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Use different region on each attempt to spread load
+      // Use custom endpoint (QuickNode) or rotate through public regions
       const currentRegion = regions[(attempt - 1) % regions.length];
-      const apiUrl = JITO_API_URLS[currentRegion];
+      const apiUrl = getJitoApiUrl(currentRegion);
 
       if (attempt > 1) {
         const delay = attempt * 5000; // 5s, 10s, 15s, 20s, 25s - respect 1req/sec limit
-        console.log(`⏳ Retry attempt ${attempt}/${maxRetries} after ${delay / 1000}s (region: ${currentRegion})...`);
+        console.log(`⏳ Retry attempt ${attempt}/${maxRetries} after ${delay / 1000}s${useCustomEndpoint ? ' (QuickNode)' : ` (region: ${currentRegion})`}...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       } else {
-        console.log(`🌍 Using region: ${currentRegion}`);
+        console.log(`🌍 Using ${useCustomEndpoint ? 'QuickNode + Lil\' JIT' : `region: ${currentRegion}`}`);
       }
 
       // Send bundle via HTTP POST with proper encoding parameter
