@@ -91,55 +91,22 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
     // 如果用户指定了 DEX 偏好，使用用户选择
     if (preferredDexes && preferredDexes.length > 0) {
       console.log('Using user-preferred DEXes:', preferredDexes.join(', '));
-      try {
-        quoteResponse = await jupiterApi.quoteGet({
-          inputMint: debtMint.toString(), // USDS
-          outputMint: collateralMint.toString(), // JLP
-          amount: flashLoanAmountRaw,
-          slippageBps,
-          dexes: preferredDexes,
-          onlyDirectRoutes: onlyDirectRoutes,
-          restrictIntermediateTokens: true, // 限制中间代币，避免低流动性池子
-          maxAccounts: 31, // 限制最大账户数，减小交易体积
-        });
-        console.log('✓ Got quote from preferred DEXes');
-      } catch (e) {
-        console.log('Preferred DEXes failed, falling back to auto selection...');
-      }
-    }
-
-    // 如果没有指定 DEX 或失败，尝试获取最简路由（只用单个 DEX）
-    if (!quoteResponse) {
-      console.log('Attempting to get minimal route (single DEX)...');
-      const singleDexOptions = ['PancakeSwap', 'Orca', 'Raydium', 'Whirlpool'];
-
-      for (const dex of singleDexOptions) {
-        try {
-          console.log(`Trying ${dex} only...`);
-          quoteResponse = await jupiterApi.quoteGet({
-            inputMint: debtMint.toString(), // USDS
-            outputMint: collateralMint.toString(), // JLP
-            amount: flashLoanAmountRaw,
-            slippageBps,
-            dexes: [dex], // 只用单个 DEX
-            onlyDirectRoutes: onlyDirectRoutes,
-            restrictIntermediateTokens: true,
-            maxAccounts: 31,
-          });
-          console.log(`✓ Got quote from ${dex}`);
-          break; // 找到就用
-        } catch (e) {
-          console.log(`${dex} failed, trying next...`);
-        }
-      }
-    }
-
-    // 如果所有单 DEX 都失败，使用默认路由（无限制）
-    if (!quoteResponse) {
-      console.log('All single DEX failed, using default route...');
       quoteResponse = await jupiterApi.quoteGet({
-        inputMint: debtMint.toString(),
-        outputMint: collateralMint.toString(),
+        inputMint: debtMint.toString(), // USDS
+        outputMint: collateralMint.toString(), // JLP
+        amount: flashLoanAmountRaw,
+        slippageBps,
+        dexes: preferredDexes,
+        onlyDirectRoutes: onlyDirectRoutes,
+        restrictIntermediateTokens: true,
+        maxAccounts: 31,
+      });
+    } else {
+      // 没有指定 DEX，使用 Jupiter 自动路由（与官方一致）
+      console.log('Using Jupiter auto routing (no dexes specified)...');
+      quoteResponse = await jupiterApi.quoteGet({
+        inputMint: debtMint.toString(), // USDS
+        outputMint: collateralMint.toString(), // JLP
         amount: flashLoanAmountRaw,
         slippageBps,
         onlyDirectRoutes: onlyDirectRoutes,
