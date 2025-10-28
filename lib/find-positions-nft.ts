@@ -9,13 +9,13 @@ const { getPositionMint } = borrowPda;
  * 优化策略：
  * 1. 获取用户所有 token accounts (1 次 RPC 调用)
  * 2. 分批搜索 position IDs，优先检查常用范围
- * 3. 支持高位数的 position IDs (最大 100,000)
+ * 3. 一个账户在一个 vault 只有一个 position，找到就停止
  *
  * 优势：
  * - 只需要 1 次 RPC 调用获取用户 token accounts
  * - 本地计算 position mints 并匹配，无需额外 RPC
  * - 分批搜索策略：优先找到低位数 positions，避免不必要的枚举
- * - 支持四位数、五位数的 position IDs
+ * - 找到第一个 position 立即停止（一个 vault 只有一个 position）
  */
 export async function findUserPositionsByNFT(
   connection: Connection,
@@ -24,7 +24,7 @@ export async function findUserPositionsByNFT(
   maxPositionsToCheck: number = 100000, // 提高到 10 万
   onProgress?: (current: number, total: number) => void
 ): Promise<number[]> {
-  console.log(`Searching for position NFTs in vault ${vaultId} for user ${userPublicKey.toString()}...`);
+  console.log(`Searching for position NFT in vault ${vaultId} for user ${userPublicKey.toString().slice(0, 8)}...`);
 
   try {
     // Step 1: 获取用户的所有 token accounts (1 次 RPC 调用)
@@ -43,7 +43,7 @@ export async function findUserPositionsByNFT(
         tokenAccount: acc.pubkey.toString(),
       }));
 
-    console.log(`Need to find ${nftsToFind.length} position NFTs`);
+    console.log(`User has ${nftsToFind.length} NFT(s) with balance`);
 
     if (nftsToFind.length === 0) {
       console.log('No NFTs with balance found');
@@ -51,7 +51,6 @@ export async function findUserPositionsByNFT(
     }
 
     const userPositions: number[] = [];
-    const foundMints = new Set<string>();
 
     // Step 2: 分批搜索策略
     // 批次定义：优先检查常用范围，然后扩展到更大范围
@@ -63,8 +62,9 @@ export async function findUserPositionsByNFT(
     ];
 
     for (const batch of batches) {
-      if (foundMints.size === nftsToFind.length) {
-        console.log('All positions found, stopping search');
+      // 🎯 一个账户在一个 vault 只有一个 position，找到就停止
+      if (userPositions.length > 0) {
+        console.log('✓ Position found, stopping search');
         break;
       }
 
@@ -89,17 +89,12 @@ export async function findUserPositionsByNFT(
           // 检查这个 mint 是否匹配用户持有的 NFT
           const matchedNft = nftsToFind.find((nft) => nft.mint === mintStr);
 
-          if (matchedNft && !foundMints.has(mintStr)) {
-            console.log(`✓ Found position ${positionId} (NFT balance: ${matchedNft.amount})`);
+          if (matchedNft) {
+            console.log(`✓ Found position ${positionId} for this vault!`);
             userPositions.push(positionId);
-            foundMints.add(mintStr);
-
-            // 如果找到了所有 NFTs，提前退出
-            if (foundMints.size === nftsToFind.length) {
-              console.log(`All ${nftsToFind.length} positions found!`);
-              shouldBreakBatch = true;
-              break;
-            }
+            // 🎯 一个 vault 只有一个 position，找到就退出
+            shouldBreakBatch = true;
+            break;
           }
 
           // 进度回调
@@ -109,20 +104,21 @@ export async function findUserPositionsByNFT(
         }
       }
 
-      console.log(`Batch ${batch.name} complete. Found ${foundMints.size}/${nftsToFind.length} positions so far.`);
+      if (shouldBreakBatch) {
+        console.log(`✓ Batch ${batch.name} complete - position found!`);
+        break;
+      } else {
+        console.log(`✗ Batch ${batch.name} complete - no position found, continuing...`);
+      }
     }
 
-    // 如果还有未找到的 NFTs，报告一下
-    if (foundMints.size < nftsToFind.length) {
-      const unfoundNfts = nftsToFind.filter((nft) => !foundMints.has(nft.mint));
-      console.warn(`Warning: ${unfoundNfts.length} NFT(s) not found in range 0-${maxPositionsToCheck}`);
-      unfoundNfts.forEach((nft) => {
-        console.warn(`  Unfound NFT mint: ${nft.mint}`);
-      });
+    if (userPositions.length === 0) {
+      console.log(`\n✗ No position found for vault ${vaultId} in range 0-${maxPositionsToCheck}`);
+    } else {
+      console.log(`\n✓ Found position: ${userPositions[0]}`);
     }
 
-    console.log(`\nTotal found: ${userPositions.length} positions:`, userPositions);
-    return userPositions.sort((a, b) => a - b);
+    return userPositions;
   } catch (error) {
     console.error('Error finding positions by NFT:', error);
     throw error;
