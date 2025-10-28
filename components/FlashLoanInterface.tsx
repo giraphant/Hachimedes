@@ -929,24 +929,21 @@ export function FlashLoanInterface() {
                       滑点: {(slippageBps / 100).toFixed(1)}%
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-80 bg-slate-900 border-slate-700">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-white flex items-center gap-2">
+                  <PopoverContent className="w-80 bg-slate-900 border-slate-700 max-h-[85vh] overflow-y-auto">
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <h4 className="font-medium text-white flex items-center gap-2 text-sm">
                           <SlidersHorizontal className="h-4 w-4" />
                           交易设置
                         </h4>
-                        <p className="text-xs text-slate-400">
-                          自定义您的交易参数以获得最佳执行
-                        </p>
                       </div>
 
                       {/* 路由类型 - 优先级最高 */}
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label className="text-slate-300 text-sm">路由类型</Label>
+                          <Label className="text-slate-300 text-xs">路由类型</Label>
                           <span className="text-xs text-slate-500">
-                            {onlyDirectRoutes ? '仅直接' : '智能路由'}
+                            {onlyDirectRoutes ? '直接' : '智能'}
                           </span>
                         </div>
                         <div className="flex gap-2">
@@ -955,7 +952,7 @@ export function FlashLoanInterface() {
                             variant={!onlyDirectRoutes ? "default" : "outline"}
                             size="sm"
                             onClick={() => setOnlyDirectRoutes(false)}
-                            className="flex-1 text-xs"
+                            className="flex-1 text-xs h-8"
                           >
                             智能路由
                           </Button>
@@ -964,22 +961,19 @@ export function FlashLoanInterface() {
                             variant={onlyDirectRoutes ? "default" : "outline"}
                             size="sm"
                             onClick={() => setOnlyDirectRoutes(true)}
-                            className="flex-1 text-xs"
+                            className="flex-1 text-xs h-8"
                           >
-                            仅直接路由
+                            直接路由
                           </Button>
                         </div>
-                        <p className="text-xs text-slate-500">
-                          直接路由交易更小但价格可能较差，智能路由寻找最优价格
-                        </p>
                       </div>
 
                       {/* Jito Bundle */}
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label className="text-slate-300 text-sm">Jito Bundle</Label>
+                          <Label className="text-slate-300 text-xs">Jito Bundle</Label>
                           <span className="text-xs text-slate-500">
-                            {useJitoBundle ? '已启用' : '已禁用'}
+                            {useJitoBundle ? '开' : '关'}
                           </span>
                         </div>
                         <div className="flex gap-2">
@@ -988,29 +982,26 @@ export function FlashLoanInterface() {
                             variant={!useJitoBundle ? "default" : "outline"}
                             size="sm"
                             onClick={() => setUseJitoBundle(false)}
-                            className="flex-1 text-xs"
+                            className="flex-1 text-xs h-8"
                           >
-                            禁用
+                            关闭
                           </Button>
                           <Button
                             type="button"
                             variant={useJitoBundle ? "default" : "outline"}
                             size="sm"
                             onClick={() => setUseJitoBundle(true)}
-                            className="flex-1 text-xs"
+                            className="flex-1 text-xs h-8"
                           >
-                            启用
+                            开启
                           </Button>
                         </div>
-                        <p className="text-xs text-slate-500">
-                          绕过交易大小限制，适合复杂路由（需支付小额 tip）
-                        </p>
                       </div>
 
                       {/* 滑点设置 */}
-                      <div className="space-y-3">
-                        <Label className="text-slate-300 text-sm">滑点容忍度</Label>
-                        <div className="flex gap-2">
+                      <div className="space-y-2">
+                        <Label className="text-slate-300 text-xs">滑点容忍度</Label>
+                        <div className="flex gap-1.5">
                           {[10, 50, 100, 300].map((bps) => (
                             <Button
                               key={bps}
@@ -1018,7 +1009,7 @@ export function FlashLoanInterface() {
                               variant={slippageBps === bps ? "default" : "outline"}
                               size="sm"
                               onClick={() => setSlippageBps(bps)}
-                              className="flex-1 text-xs"
+                              className="flex-1 text-xs h-8"
                             >
                               {(bps / 100).toFixed(1)}%
                             </Button>
@@ -1034,27 +1025,24 @@ export function FlashLoanInterface() {
                                 setSlippageBps(Math.round(value));
                               }
                             }}
-                            className="bg-slate-800 border-slate-700 text-white text-sm"
+                            className="bg-slate-800 border-slate-700 text-white text-xs h-8"
                             step="0.1"
                             min="0"
                             max="50"
                           />
-                          <span className="text-xs text-slate-400 whitespace-nowrap">%</span>
+                          <span className="text-xs text-slate-400">%</span>
                         </div>
-                        <p className="text-xs text-slate-500">
-                          当前: {(slippageBps / 100).toFixed(2)}% ({slippageBps} bps)
-                        </p>
                       </div>
 
-                      {/* DEX 选择 - 多选 (移除自动/全选按钮) */}
-                      <div className="space-y-3">
+                      {/* DEX 选择 - 多选 */}
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label className="text-slate-300 text-sm">DEX 限制</Label>
+                          <Label className="text-slate-300 text-xs">DEX 限制</Label>
                           <span className="text-xs text-slate-500">
-                            {selectedDexes.length === 0 ? '自动' : `${selectedDexes.length} 个`}
+                            {selectedDexes.length === 0 ? '自动' : selectedDexes.length}
                           </span>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-1.5">
                           {['Orca', 'Raydium', 'Whirlpool', 'Meteora'].map((dex) => (
                             <Button
                               key={dex}
@@ -1068,34 +1056,31 @@ export function FlashLoanInterface() {
                                     : [...prev, dex]
                                 );
                               }}
-                              className="text-xs"
+                              className="text-xs h-8"
                             >
                               {dex}
                             </Button>
                           ))}
                         </div>
-                        <p className="text-xs text-slate-500">
-                          未选择表示自动选择所有 DEX，限制可减少 TX 大小
-                        </p>
                       </div>
 
                       {/* 优先费用 */}
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label className="text-slate-300 text-sm">优先费用</Label>
+                          <Label className="text-slate-300 text-xs">优先费用</Label>
                           <span className="text-xs text-slate-500">
                             {priorityFee === 'default' && '默认'}
-                            {priorityFee === 'fast' && '+0.00001 SOL'}
-                            {priorityFee === 'turbo' && '+0.00005 SOL'}
+                            {priorityFee === 'fast' && '快'}
+                            {priorityFee === 'turbo' && '极速'}
                           </span>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1.5">
                           <Button
                             type="button"
                             variant={priorityFee === 'default' ? "default" : "outline"}
                             size="sm"
                             onClick={() => setPriorityFee('default')}
-                            className="flex-1 text-xs"
+                            className="flex-1 text-xs h-8"
                           >
                             默认
                           </Button>
@@ -1104,7 +1089,7 @@ export function FlashLoanInterface() {
                             variant={priorityFee === 'fast' ? "default" : "outline"}
                             size="sm"
                             onClick={() => setPriorityFee('fast')}
-                            className="flex-1 text-xs"
+                            className="flex-1 text-xs h-8"
                           >
                             快速
                           </Button>
@@ -1113,20 +1098,11 @@ export function FlashLoanInterface() {
                             variant={priorityFee === 'turbo' ? "default" : "outline"}
                             size="sm"
                             onClick={() => setPriorityFee('turbo')}
-                            className="flex-1 text-xs"
+                            className="flex-1 text-xs h-8"
                           >
                             极速
                           </Button>
                         </div>
-                        <p className="text-xs text-slate-500">
-                          更高的优先费用可以加快交易确认速度
-                        </p>
-                      </div>
-
-                      <div className="pt-2 border-t border-slate-700">
-                        <p className="text-xs text-slate-500">
-                          💡 提示: 较低的滑点可能导致交易失败，较高的滑点可能导致更差的价格
-                        </p>
                       </div>
                     </div>
                   </PopoverContent>
