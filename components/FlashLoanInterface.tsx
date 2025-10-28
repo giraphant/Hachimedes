@@ -483,10 +483,23 @@ export function FlashLoanInterface() {
         }
       }
 
-      // 签名交易
+      // 签名交易 - 添加价格提醒
+      let priceWarning = '';
+      if (swapQuote) {
+        const inputAmount = parseInt(swapQuote.inputAmount) / 1e6;
+        const outputAmount = parseInt(swapQuote.outputAmount) / 1e6;
+        const jlpPrice = operationType === 'leverageSwap'
+          ? (inputAmount / outputAmount).toFixed(4)  // USDS → JLP: USDS per JLP
+          : (outputAmount / inputAmount).toFixed(4);  // JLP → USDS: USDS per JLP
+
+        priceWarning = `\n📊 JLP 价格: $${jlpPrice} USDS\n⚠️ 请检查价格是否合理`;
+      }
+
       toast({
         title: '请在钱包中确认交易',
-        description: useJitoBundle ? '需要签名 3 个交易' : '正在等待签名...',
+        description: useJitoBundle
+          ? `需要签名 3 个交易${priceWarning}`
+          : `正在等待签名...${priceWarning}`,
       });
 
       if (!signTransaction) {
@@ -996,7 +1009,7 @@ export function FlashLoanInterface() {
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="text-xs">
-                      滑点: {(slippageBps / 100).toFixed(1)}%
+                      滑点: {(slippageBps / 100).toFixed(2)}%
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-80 bg-slate-900 border-slate-700 max-h-[85vh] overflow-y-auto">
@@ -1030,11 +1043,11 @@ export function FlashLoanInterface() {
                           >
                             0.1%
                           </Button>
-                          <div className="flex-1 relative">
+                          <div className="flex-1 flex items-center gap-1 bg-slate-800/50 rounded-lg px-2 border border-slate-700">
                             <Input
                               type="number"
                               value={slippageBps / 100 || ''}
-                              placeholder="0.00%"
+                              placeholder="0.00"
                               onChange={(e) => {
                                 const value = parseFloat(e.target.value) * 100;
                                 if (!isNaN(value) && value >= 0 && value <= 5000) {
@@ -1043,11 +1056,12 @@ export function FlashLoanInterface() {
                                   setSlippageBps(0);
                                 }
                               }}
-                              className="bg-slate-800/50 border-slate-700 text-white text-xs text-center w-full h-8 rounded-lg focus-visible:ring-1 focus-visible:ring-slate-500 placeholder:text-slate-500"
+                              className="bg-transparent border-0 text-white text-xs text-center w-full p-0 h-6 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-slate-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               step="0.1"
                               min="0"
                               max="50"
                             />
+                            <span className="text-xs text-slate-400">%</span>
                           </div>
                         </div>
                       </div>
