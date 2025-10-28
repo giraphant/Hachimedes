@@ -360,6 +360,7 @@ export function FlashLoanInterface() {
       const borrowTokenInfo = TOKENS[borrowToken];
 
       let transaction: any;
+      let transactions: any[] = [];
       let positionId: any;
       let swapQuote: any = undefined;
 
@@ -367,99 +368,168 @@ export function FlashLoanInterface() {
       const { PublicKey } = await import('@solana/web3.js');
 
       if (operationType === 'deleverageSwap') {
-        // Deleverage + Swap 模式：使用 Direct Operate（无初始化指令）
-        toast({
-          title: '正在构建 Flash Loan 交易',
-          description: 'Flash Borrow → Swap → Repay → Flash Payback',
-        });
+        if (useJitoBundle) {
+          // Jito Bundle 模式：3 个独立交易
+          toast({
+            title: '正在构建 Jito Bundle (3 TX)',
+            description: 'Withdraw → Swap → Repay',
+          });
 
-        const { buildDeleverageFlashLoanSwap } = await import('@/lib/deleverage-flashloan-swap');
+          const { buildDeleverageJitoBundle } = await import('@/lib/deleverage-jito-bundle');
 
-        const flashLoanAmountRaw = parseFloat(depositAmount);
+          const withdrawAmountRaw = parseFloat(depositAmount);
 
-        const result = await buildDeleverageFlashLoanSwap({
-          collateralMint: new PublicKey(depositTokenInfo.mint), // JLP
-          debtMint: new PublicKey(borrowTokenInfo.mint),        // USDS
-          flashLoanAmount: flashLoanAmountRaw,
-          userPublicKey: publicKey,
-          vaultId: vaultId,
-          positionId: selectedPositionId!,
-          connection,
-          slippageBps: slippageBps,
-          preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
-          onlyDirectRoutes: onlyDirectRoutes,
-          useJitoBundle: useJitoBundle,
-        });
+          const result = await buildDeleverageJitoBundle({
+            collateralMint: new PublicKey(depositTokenInfo.mint), // JLP
+            debtMint: new PublicKey(borrowTokenInfo.mint),        // USDS
+            withdrawAmount: withdrawAmountRaw,
+            userPublicKey: publicKey,
+            vaultId: vaultId,
+            positionId: selectedPositionId!,
+            connection,
+            slippageBps: slippageBps,
+            preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
+            onlyDirectRoutes: onlyDirectRoutes,
+          });
 
-        transaction = result.transaction;
-        positionId = result.positionId;
-        swapQuote = result.swapQuote;
+          transactions = result.transactions;
+          positionId = result.positionId;
+          swapQuote = result.swapQuote;
+        } else {
+          // Flash Loan 模式：单个交易
+          toast({
+            title: '正在构建 Flash Loan 交易',
+            description: 'Flash Borrow → Swap → Repay → Flash Payback',
+          });
+
+          const { buildDeleverageFlashLoanSwap } = await import('@/lib/deleverage-flashloan-swap');
+
+          const flashLoanAmountRaw = parseFloat(depositAmount);
+
+          const result = await buildDeleverageFlashLoanSwap({
+            collateralMint: new PublicKey(depositTokenInfo.mint), // JLP
+            debtMint: new PublicKey(borrowTokenInfo.mint),        // USDS
+            flashLoanAmount: flashLoanAmountRaw,
+            userPublicKey: publicKey,
+            vaultId: vaultId,
+            positionId: selectedPositionId!,
+            connection,
+            slippageBps: slippageBps,
+            preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
+            onlyDirectRoutes: onlyDirectRoutes,
+            useJitoBundle: false,
+          });
+
+          transaction = result.transaction;
+          positionId = result.positionId;
+          swapQuote = result.swapQuote;
+        }
       } else if (operationType === 'leverageSwap') {
-        // Leverage + Swap 模式：使用 Flash Loan
-        toast({
-          title: '正在构建 Flash Loan 交易',
-          description: 'Flash Borrow → Swap → Deposit + Borrow → Flash Payback',
-        });
+        if (useJitoBundle) {
+          // Jito Bundle 模式：3 个独立交易
+          toast({
+            title: '正在构建 Jito Bundle (3 TX)',
+            description: 'Borrow → Swap → Deposit',
+          });
 
-        const { buildLeverageFlashLoanSwap } = await import('@/lib/leverage-flashloan-swap');
+          const { buildLeverageJitoBundle } = await import('@/lib/leverage-jito-bundle');
 
-        const flashLoanAmountRaw = parseFloat(depositAmount);
+          const borrowAmountRaw = parseFloat(depositAmount);
 
-        const result = await buildLeverageFlashLoanSwap({
-          collateralMint: new PublicKey(depositTokenInfo.mint), // JLP (抵押品)
-          debtMint: new PublicKey(borrowTokenInfo.mint),        // USDS (债务)
-          flashLoanAmount: flashLoanAmountRaw,
-          userPublicKey: publicKey,
-          vaultId: vaultId,
-          positionId: selectedPositionId!,
-          connection,
-          slippageBps: slippageBps,
-          preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
-          onlyDirectRoutes: onlyDirectRoutes,
-          useJitoBundle: useJitoBundle,
-        });
+          const result = await buildLeverageJitoBundle({
+            collateralMint: new PublicKey(depositTokenInfo.mint), // JLP
+            debtMint: new PublicKey(borrowTokenInfo.mint),        // USDS
+            borrowAmount: borrowAmountRaw,
+            userPublicKey: publicKey,
+            vaultId: vaultId,
+            positionId: selectedPositionId!,
+            connection,
+            slippageBps: slippageBps,
+            preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
+            onlyDirectRoutes: onlyDirectRoutes,
+          });
 
-        transaction = result.transaction;
-        positionId = result.positionId;
-        swapQuote = result.swapQuote;
+          transactions = result.transactions;
+          positionId = result.positionId;
+          swapQuote = result.swapQuote;
+        } else {
+          // Flash Loan 模式：单个交易
+          toast({
+            title: '正在构建 Flash Loan 交易',
+            description: 'Flash Borrow → Swap → Deposit + Borrow → Flash Payback',
+          });
+
+          const { buildLeverageFlashLoanSwap } = await import('@/lib/leverage-flashloan-swap');
+
+          const flashLoanAmountRaw = parseFloat(depositAmount);
+
+          const result = await buildLeverageFlashLoanSwap({
+            collateralMint: new PublicKey(depositTokenInfo.mint), // JLP
+            debtMint: new PublicKey(borrowTokenInfo.mint),        // USDS
+            flashLoanAmount: flashLoanAmountRaw,
+            userPublicKey: publicKey,
+            vaultId: vaultId,
+            positionId: selectedPositionId!,
+            connection,
+            slippageBps: slippageBps,
+            preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
+            onlyDirectRoutes: onlyDirectRoutes,
+            useJitoBundle: false,
+          });
+
+          transaction = result.transaction;
+          positionId = result.positionId;
+          swapQuote = result.swapQuote;
+        }
       }
 
-      // 签名交易（versioned transaction）
+      // 签名交易
       toast({
         title: '请在钱包中确认交易',
-        description: '正在等待签名...',
+        description: useJitoBundle ? '需要签名 3 个交易' : '正在等待签名...',
       });
 
-      // 使用 signTransaction 签名 versioned transaction
       if (!signTransaction) {
         throw new Error('钱包不支持签名功能');
       }
 
-      const signedTransaction = await signTransaction(transaction);
+      let signedTransactions: any[] = [];
+
+      if (useJitoBundle) {
+        // 签名多个交易
+        for (let i = 0; i < transactions.length; i++) {
+          const signed = await signTransaction(transactions[i]);
+          signedTransactions.push(signed);
+        }
+      } else {
+        // 签名单个交易
+        const signedTransaction = await signTransaction(transaction);
+        signedTransactions = [signedTransaction];
+      }
 
       // 发送交易
       let signature: string;
 
       if (useJitoBundle) {
-        // 使用 Jito Bundle 发送
+        // 使用 Jito Multi-TX Bundle 发送
         toast({
           title: '正在通过 Jito Bundle 发送',
-          description: '使用 Jito 可绕过交易大小限制...',
+          description: `发送 ${signedTransactions.length} 个交易的原子 Bundle...`,
         });
 
-        const { sendJitoBundle } = await import('@/lib/jito-bundle');
-        const bundleId = await sendJitoBundle(connection, signedTransaction);
+        const { sendJitoMultiTxBundle } = await import('@/lib/jito-bundle');
+        const bundleId = await sendJitoMultiTxBundle(connection, signedTransactions);
 
         // Bundle ID 就是 signature
         signature = bundleId;
       } else {
-        // 普通发送
+        // 普通发送单个交易
         toast({
           title: '正在发送交易',
           description: '请稍候...',
         });
 
-        signature = await connection.sendTransaction(signedTransaction, {
+        signature = await connection.sendTransaction(signedTransactions[0], {
           skipPreflight: false,
           preflightCommitment: 'confirmed',
         });
@@ -931,7 +1001,7 @@ export function FlashLoanInterface() {
                   </PopoverTrigger>
                   <PopoverContent className="w-80 bg-slate-900 border-slate-700 max-h-[85vh] overflow-y-auto">
                     <div className="space-y-3">
-                      <div className="space-y-1">
+                      <div className="space-y-1 pb-2">
                         <h4 className="font-medium text-white flex items-center gap-2 text-sm">
                           <SlidersHorizontal className="h-4 w-4" />
                           交易设置
@@ -939,7 +1009,7 @@ export function FlashLoanInterface() {
                       </div>
 
                       {/* 滑点设置 */}
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <Label className="text-slate-300 text-xs">滑点容忍度</Label>
                         <div className="flex gap-1.5">
                           {[10, 50, 100, 300].map((bps) => (
@@ -975,11 +1045,11 @@ export function FlashLoanInterface() {
                       </div>
 
                       {/* Jito Bundle */}
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label className="text-slate-300 text-xs">Jito Bundle</Label>
                           <span className="text-xs text-slate-500">
-                            {useJitoBundle ? '开' : '关'}
+                            {useJitoBundle ? '3 TX' : 'Flash'}
                           </span>
                         </div>
                         <div className="flex gap-1.5">
@@ -988,24 +1058,24 @@ export function FlashLoanInterface() {
                             variant={!useJitoBundle ? "default" : "outline"}
                             size="sm"
                             onClick={() => setUseJitoBundle(false)}
-                            className="flex-1 text-xs h-7"
+                            className="flex-1 text-xs h-8"
                           >
-                            关闭
+                            Flash Loan
                           </Button>
                           <Button
                             type="button"
                             variant={useJitoBundle ? "default" : "outline"}
                             size="sm"
                             onClick={() => setUseJitoBundle(true)}
-                            className="flex-1 text-xs h-7"
+                            className="flex-1 text-xs h-8"
                           >
-                            开启
+                            Jito 3 TX
                           </Button>
                         </div>
                       </div>
 
                       {/* 优先费用 */}
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label className="text-slate-300 text-xs">优先费用</Label>
                           <span className="text-xs text-slate-500">
@@ -1020,7 +1090,7 @@ export function FlashLoanInterface() {
                             variant={priorityFee === 'default' ? "default" : "outline"}
                             size="sm"
                             onClick={() => setPriorityFee('default')}
-                            className="flex-1 text-xs h-7"
+                            className="flex-1 text-xs h-8"
                           >
                             默认
                           </Button>
@@ -1029,7 +1099,7 @@ export function FlashLoanInterface() {
                             variant={priorityFee === 'fast' ? "default" : "outline"}
                             size="sm"
                             onClick={() => setPriorityFee('fast')}
-                            className="flex-1 text-xs h-7"
+                            className="flex-1 text-xs h-8"
                           >
                             快速
                           </Button>
@@ -1038,7 +1108,7 @@ export function FlashLoanInterface() {
                             variant={priorityFee === 'turbo' ? "default" : "outline"}
                             size="sm"
                             onClick={() => setPriorityFee('turbo')}
-                            className="flex-1 text-xs h-7"
+                            className="flex-1 text-xs h-8"
                           >
                             极速
                           </Button>
@@ -1046,7 +1116,7 @@ export function FlashLoanInterface() {
                       </div>
 
                       {/* 路由类型 */}
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label className="text-slate-300 text-xs">路由类型</Label>
                           <span className="text-xs text-slate-500">
@@ -1059,7 +1129,7 @@ export function FlashLoanInterface() {
                             variant={!onlyDirectRoutes ? "default" : "outline"}
                             size="sm"
                             onClick={() => setOnlyDirectRoutes(false)}
-                            className="flex-1 text-xs h-7"
+                            className="flex-1 text-xs h-8"
                           >
                             智能路由
                           </Button>
@@ -1068,7 +1138,7 @@ export function FlashLoanInterface() {
                             variant={onlyDirectRoutes ? "default" : "outline"}
                             size="sm"
                             onClick={() => setOnlyDirectRoutes(true)}
-                            className="flex-1 text-xs h-7"
+                            className="flex-1 text-xs h-8"
                           >
                             直接路由
                           </Button>
@@ -1076,7 +1146,7 @@ export function FlashLoanInterface() {
                       </div>
 
                       {/* DEX 限制 */}
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label className="text-slate-300 text-xs">DEX 限制</Label>
                           <span className="text-xs text-slate-500">
