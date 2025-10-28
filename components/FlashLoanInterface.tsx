@@ -1010,9 +1010,27 @@ export function FlashLoanInterface() {
 
                       {/* 滑点设置 */}
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-slate-300 text-xs">滑点容忍度</Label>
-                          <div className="flex items-center gap-1 bg-slate-800/50 rounded px-2 py-0.5">
+                        <Label className="text-slate-300 text-xs">滑点容忍度</Label>
+                        <div className="flex gap-1.5">
+                          <Button
+                            type="button"
+                            variant={slippageBps === 10 ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSlippageBps(10)}
+                            className="flex-1 text-xs h-8"
+                          >
+                            0.1%
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={slippageBps === 50 ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSlippageBps(50)}
+                            className="flex-1 text-xs h-8"
+                          >
+                            0.5%
+                          </Button>
+                          <div className="flex-1 flex items-center gap-1 bg-slate-800/50 rounded px-2 border border-slate-700">
                             <Input
                               type="number"
                               value={slippageBps / 100}
@@ -1022,7 +1040,7 @@ export function FlashLoanInterface() {
                                   setSlippageBps(Math.round(value));
                                 }
                               }}
-                              className="bg-transparent border-0 text-white text-xs w-12 p-0 h-5 focus-visible:ring-0 focus-visible:ring-offset-0"
+                              className="bg-transparent border-0 text-white text-xs w-full p-0 h-6 focus-visible:ring-0 focus-visible:ring-offset-0"
                               step="0.1"
                               min="0"
                               max="50"
@@ -1030,30 +1048,11 @@ export function FlashLoanInterface() {
                             <span className="text-xs text-slate-400">%</span>
                           </div>
                         </div>
-                        <div className="flex gap-1.5">
-                          {[10, 50, 100, 300].map((bps) => (
-                            <Button
-                              key={bps}
-                              type="button"
-                              variant={slippageBps === bps ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setSlippageBps(bps)}
-                              className="flex-1 text-xs h-8"
-                            >
-                              {(bps / 100).toFixed(1)}%
-                            </Button>
-                          ))}
-                        </div>
                       </div>
 
-                      {/* Jito Bundle */}
+                      {/* Mode */}
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-slate-300 text-xs">Jito Bundle</Label>
-                          <span className="text-xs text-slate-500">
-                            {useJitoBundle ? '3 TX' : 'Flash'}
-                          </span>
-                        </div>
+                        <Label className="text-slate-300 text-xs">Mode</Label>
                         <div className="flex gap-1.5">
                           <Button
                             type="button"
@@ -1071,7 +1070,7 @@ export function FlashLoanInterface() {
                             onClick={() => setUseJitoBundle(true)}
                             className="flex-1 text-xs h-8"
                           >
-                            Jito 3 TX
+                            Jito Bundle
                           </Button>
                         </div>
                       </div>

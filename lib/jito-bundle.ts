@@ -90,47 +90,88 @@ export async function sendJitoBundle(
   console.log('Sending bundle to Jito HTTP API...');
   console.log('Transaction size:', transaction.serialize().length, 'bytes');
 
-  try {
-    // Send bundle via HTTP POST with proper encoding parameter
-    const response = await fetch(`${apiUrl}/bundles`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'sendBundle',
-        params: [
-          bundle,
-          {
-            encoding: 'base64', // IMPORTANT: Must specify encoding
-          }
-        ],
-      }),
-    });
+  const maxRetries = 3;
+  let lastError: any;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      if (attempt > 1) {
+        const delay = attempt * 2000; // 2s, 4s, 6s
+        console.log(`⏳ Retry attempt ${attempt}/${maxRetries} after ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+      // Send bundle via HTTP POST with proper encoding parameter
+      const response = await fetch(`${apiUrl}/bundles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'sendBundle',
+          params: [
+            bundle,
+            {
+              encoding: 'base64', // IMPORTANT: Must specify encoding
+            }
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+
+        // Check for rate limiting (429)
+        if (response.status === 429 && attempt < maxRetries) {
+          console.warn(`⚠️  Rate limited (429), will retry...`);
+          lastError = new Error(`HTTP 429: Rate limited`);
+          continue;
+        }
+
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+      }
+
+      const data = await response.json();
+
+      // Check for Jito rate limit error code
+      if (data.error && data.error.code === -32097 && attempt < maxRetries) {
+        console.warn(`⚠️  Jito rate limited (code -32097), will retry...`);
+        lastError = data.error;
+        continue;
+      }
+
+      if (data.error) {
+        throw new Error(`Jito API error: ${JSON.stringify(data.error)}`);
+      }
+
+      const bundleId = data.result;
+      console.log('✓ Bundle sent successfully!');
+      console.log('Bundle ID:', bundleId);
+
+      return bundleId;
+
+    } catch (error) {
+      lastError = error;
+
+      // If it's not a rate limit error, throw immediately
+      if (error instanceof Error &&
+          !error.message.includes('429') &&
+          !error.message.includes('-32097')) {
+        console.error('❌ Failed to send Jito bundle:', error);
+        throw new Error(`Jito bundle failed: ${error.message}`);
+      }
+
+      // If this was the last retry, throw
+      if (attempt === maxRetries) {
+        console.error('❌ Failed to send Jito bundle after all retries:', error);
+        throw new Error(`Jito 网络拥堵，请稍后重试或使用 Flash Loan 模式`);
+      }
     }
-
-    const data = await response.json();
-
-    if (data.error) {
-      throw new Error(`Jito API error: ${JSON.stringify(data.error)}`);
-    }
-
-    const bundleId = data.result;
-    console.log('✓ Bundle sent successfully!');
-    console.log('Bundle ID:', bundleId);
-
-    return bundleId;
-
-  } catch (error) {
-    console.error('❌ Failed to send Jito bundle:', error);
-    throw new Error(`Jito bundle failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+
+  throw new Error(`Jito bundle failed: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`);
 }
 
 /**
@@ -169,47 +210,88 @@ export async function sendJitoMultiTxBundle(
 
   console.log('Sending bundle to Jito HTTP API...');
 
-  try {
-    // Send bundle via HTTP POST with proper encoding parameter
-    const response = await fetch(`${apiUrl}/bundles`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'sendBundle',
-        params: [
-          bundle,
-          {
-            encoding: 'base64', // IMPORTANT: Must specify encoding
-          }
-        ],
-      }),
-    });
+  const maxRetries = 3;
+  let lastError: any;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      if (attempt > 1) {
+        const delay = attempt * 2000; // 2s, 4s, 6s
+        console.log(`⏳ Retry attempt ${attempt}/${maxRetries} after ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+      // Send bundle via HTTP POST with proper encoding parameter
+      const response = await fetch(`${apiUrl}/bundles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'sendBundle',
+          params: [
+            bundle,
+            {
+              encoding: 'base64', // IMPORTANT: Must specify encoding
+            }
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+
+        // Check for rate limiting (429)
+        if (response.status === 429 && attempt < maxRetries) {
+          console.warn(`⚠️  Rate limited (429), will retry...`);
+          lastError = new Error(`HTTP 429: Rate limited`);
+          continue;
+        }
+
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+      }
+
+      const data = await response.json();
+
+      // Check for Jito rate limit error code
+      if (data.error && data.error.code === -32097 && attempt < maxRetries) {
+        console.warn(`⚠️  Jito rate limited (code -32097), will retry...`);
+        lastError = data.error;
+        continue;
+      }
+
+      if (data.error) {
+        throw new Error(`Jito API error: ${JSON.stringify(data.error)}`);
+      }
+
+      const bundleId = data.result;
+      console.log('✓ Multi-TX Bundle sent successfully!');
+      console.log('Bundle ID:', bundleId);
+
+      return bundleId;
+
+    } catch (error) {
+      lastError = error;
+
+      // If it's not a rate limit error, throw immediately
+      if (error instanceof Error &&
+          !error.message.includes('429') &&
+          !error.message.includes('-32097')) {
+        console.error('❌ Failed to send Jito multi-TX bundle:', error);
+        throw new Error(`Jito bundle failed: ${error.message}`);
+      }
+
+      // If this was the last retry, throw
+      if (attempt === maxRetries) {
+        console.error('❌ Failed to send Jito multi-TX bundle after all retries:', error);
+        throw new Error(`Jito 网络拥堵，请稍后重试或使用 Flash Loan 模式`);
+      }
     }
-
-    const data = await response.json();
-
-    if (data.error) {
-      throw new Error(`Jito API error: ${JSON.stringify(data.error)}`);
-    }
-
-    const bundleId = data.result;
-    console.log('✓ Multi-TX Bundle sent successfully!');
-    console.log('Bundle ID:', bundleId);
-
-    return bundleId;
-
-  } catch (error) {
-    console.error('❌ Failed to send Jito multi-TX bundle:', error);
-    throw new Error(`Jito bundle failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+
+  throw new Error(`Jito bundle failed: ${lastError instanceof Error ? lastError.message : 'Unknown error'}`);
 }
 
 /**

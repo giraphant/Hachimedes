@@ -3,6 +3,7 @@ import { getOperateIx } from '@jup-ag/lend/borrow';
 import { createJupiterApiClient } from '@jup-ag/api';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import BN from 'bn.js';
+import { createJitoTipInstruction } from './jito-bundle';
 
 export interface LeverageJitoBundleParams {
   collateralMint: PublicKey; // JLP
@@ -233,11 +234,12 @@ export async function buildLeverageJitoBundle(params: LeverageJitoBundleParams) 
 
     const tx2 = new VersionedTransaction(tx2Message);
 
-    // Build TX3: Deposit
+    // Build TX3: Deposit + Jito Tip
+    const jitoTipInstruction = createJitoTipInstruction(userPublicKey, 10000); // 0.00001 SOL tip
     const tx3Message = new TransactionMessage({
       payerKey: userPublicKey,
       recentBlockhash: latestBlockhash.blockhash,
-      instructions: depositInstructions,
+      instructions: [...depositInstructions, jitoTipInstruction],
     }).compileToV0Message(depositResult.addressLookupTableAccounts || []);
 
     const tx3 = new VersionedTransaction(tx3Message);
