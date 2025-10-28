@@ -483,16 +483,32 @@ export function FlashLoanInterface() {
         }
       }
 
-      // 签名交易 - 添加价格提醒
+      // 签名交易 - 添加价格对比和滑点提醒
       let priceWarning = '';
-      if (swapQuote) {
+      if (swapQuote && positionInfo && positionInfo.ltv && positionInfo.ltv > 0) {
         const inputAmount = parseInt(swapQuote.inputAmount) / 1e6;
         const outputAmount = parseInt(swapQuote.outputAmount) / 1e6;
-        const jlpPrice = operationType === 'leverageSwap'
-          ? (inputAmount / outputAmount).toFixed(4)  // USDS → JLP: USDS per JLP
-          : (outputAmount / inputAmount).toFixed(4);  // JLP → USDS: USDS per JLP
 
-        priceWarning = `\n📊 JLP 价格: $${jlpPrice} USDS\n⚠️ 请检查价格是否合理`;
+        // 交易价格（都统一为 USDS per JLP）
+        const tradePrice = operationType === 'leverageSwap'
+          ? (inputAmount / outputAmount)  // USDS → JLP: USDS per JLP
+          : (outputAmount / inputAmount);  // JLP → USDS: USDS per JLP
+
+        // 预言机价格（从 LTV 反推）
+        const currentCollateral = positionInfo.collateralAmountUi;
+        const currentDebt = positionInfo.debtAmountUi;
+        if (currentCollateral > 0 && currentDebt > 0) {
+          const oraclePrice = currentDebt / (currentCollateral * positionInfo.ltv / 100);
+
+          // 计算价格偏差（滑点）
+          const priceDeviation = ((tradePrice - oraclePrice) / oraclePrice) * 100;
+          const deviationSign = priceDeviation > 0 ? '+' : '';
+
+          priceWarning = `\n📊 预言机价格: $${oraclePrice.toFixed(4)}\n💱 交易价格: $${tradePrice.toFixed(4)}\n📉 价格偏差: ${deviationSign}${priceDeviation.toFixed(2)}%\n⚠️ 请检查价格是否合理`;
+        } else {
+          // 无法获取预言机价格时，只显示交易价格
+          priceWarning = `\n💱 交易价格: $${tradePrice.toFixed(4)} USDS/JLP\n⚠️ 请检查价格是否合理`;
+        }
       }
 
       toast({
