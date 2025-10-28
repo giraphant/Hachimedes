@@ -94,6 +94,8 @@ export async function buildDeleverageJitoBundle(params: DeleverageJitoBundlePara
         slippageBps,
         dexes: preferredDexes,
         onlyDirectRoutes,
+        restrictIntermediateTokens: true,
+        maxAccounts: 40,
       });
     } else {
       console.log('Using auto DEX selection...');
@@ -103,6 +105,8 @@ export async function buildDeleverageJitoBundle(params: DeleverageJitoBundlePara
         amount: withdrawAmountRaw,
         slippageBps,
         onlyDirectRoutes,
+        restrictIntermediateTokens: true,
+        maxAccounts: 40,
       });
     }
 

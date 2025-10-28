@@ -94,6 +94,8 @@ export async function buildLeverageJitoBundle(params: LeverageJitoBundleParams) 
         slippageBps,
         dexes: preferredDexes,
         onlyDirectRoutes,
+        restrictIntermediateTokens: true,
+        maxAccounts: 40,
       });
     } else {
       console.log('Using auto DEX selection...');
@@ -103,6 +105,8 @@ export async function buildLeverageJitoBundle(params: LeverageJitoBundleParams) 
         amount: borrowAmountRaw,
         slippageBps,
         onlyDirectRoutes,
+        restrictIntermediateTokens: true,
+        maxAccounts: 40,
       });
     }
 
