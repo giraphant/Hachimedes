@@ -12,6 +12,7 @@ export interface PositionInfo {
   debtAmountUi: number;
   healthFactor?: number;
   ltv?: number;
+  oraclePrice?: number; // Pyth 预言机价格 (collateral/debt)
 }
 
 /**
@@ -132,6 +133,7 @@ export async function fetchPositionInfo(
 
     // 计算 LTV（使用预言机价格）
     let ltv: number | undefined;
+    let oraclePrice: number | undefined;
     if (collateralAmountUi > 0 && debtAmountUi > 0) {
       try {
         // 获取 Vault 配置
@@ -141,6 +143,7 @@ export async function fetchPositionInfo(
         const price = await readPriceForVault(connection, vaultId);
 
         if (price) {
+          oraclePrice = price; // 保存预言机价格
           // LTV = debt / (collateral × price) × 100
           // price 是 collateral 相对于 debt 的价格
           ltv = (debtAmountUi / (collateralAmountUi * price)) * 100;
@@ -164,6 +167,7 @@ export async function fetchPositionInfo(
       debtAmount,
       debtAmountUi,
       ltv,
+      oraclePrice,
     };
   } catch (error) {
     console.error('Error fetching position:', error);

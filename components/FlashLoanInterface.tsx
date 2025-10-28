@@ -485,7 +485,7 @@ export function FlashLoanInterface() {
 
       // 签名交易 - 添加价格对比和滑点提醒
       let priceWarning = '';
-      if (swapQuote && positionInfo && positionInfo.ltv && positionInfo.ltv > 0) {
+      if (swapQuote && positionInfo) {
         const inputAmount = parseInt(swapQuote.inputAmount) / 1e6;
         const outputAmount = parseInt(swapQuote.outputAmount) / 1e6;
 
@@ -494,11 +494,9 @@ export function FlashLoanInterface() {
           ? (inputAmount / outputAmount)  // USDS → JLP: USDS per JLP
           : (outputAmount / inputAmount);  // JLP → USDS: USDS per JLP
 
-        // 预言机价格（从 LTV 反推）
-        const currentCollateral = positionInfo.collateralAmountUi;
-        const currentDebt = positionInfo.debtAmountUi;
-        if (currentCollateral > 0 && currentDebt > 0) {
-          const oraclePrice = currentDebt / (currentCollateral * positionInfo.ltv / 100);
+        // 使用真实的预言机价格
+        if (positionInfo.oraclePrice) {
+          const oraclePrice = positionInfo.oraclePrice;
 
           // 计算价格偏差（滑点）
           const priceDeviation = ((tradePrice - oraclePrice) / oraclePrice) * 100;
