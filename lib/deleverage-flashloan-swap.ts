@@ -99,10 +99,8 @@ export async function buildDeleverageFlashLoanSwap(params: DeleverageFlashLoanSw
           slippageBps,
           dexes: preferredDexes,
           onlyDirectRoutes: onlyDirectRoutes,
-        restrictIntermediateTokens: true,
-        maxAccounts: 31,
-          restrictIntermediateTokens: true, // 限制中间代币，避免低流动性池子
-          maxAccounts: 31, // 限制最大账户数，减小交易体积
+          restrictIntermediateTokens: true,
+          maxAccounts: 31,
         });
         console.log('✓ Got quote from preferred DEXes');
       } catch (e) {
@@ -123,12 +121,10 @@ export async function buildDeleverageFlashLoanSwap(params: DeleverageFlashLoanSw
             outputMint: debtMint.toString(),
             amount: flashLoanAmountRaw,
             slippageBps,
-            dexes: [dex], // 只用单个 DEX
+            dexes: [dex],
             onlyDirectRoutes: onlyDirectRoutes,
-        restrictIntermediateTokens: true,
-        maxAccounts: 31,
-          restrictIntermediateTokens: true, // 限制中间代币，避免低流动性池子
-          maxAccounts: 31, // 限制最大账户数，减小交易体积
+            restrictIntermediateTokens: true,
+            maxAccounts: 31,
           });
           console.log(`✓ Got quote from ${dex}`);
           break; // 找到就用
@@ -149,8 +145,6 @@ export async function buildDeleverageFlashLoanSwap(params: DeleverageFlashLoanSw
         onlyDirectRoutes: onlyDirectRoutes,
         restrictIntermediateTokens: true,
         maxAccounts: 31,
-          restrictIntermediateTokens: true, // 限制中间代币，避免低流动性池子
-          maxAccounts: 31, // 限制最大账户数，减小交易体积
       });
     }
 
