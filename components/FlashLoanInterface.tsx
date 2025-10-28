@@ -75,7 +75,7 @@ export function FlashLoanInterface() {
   }>({ collateral: 0, debt: 0 });
 
   // 高级设置
-  const [slippageBps, setSlippageBps] = useState(10); // 默认 0.1% (10 basis points)
+  const [slippageBps, setSlippageBps] = useState(5); // 默认 0.05% (5 basis points，与 Jupiter 官方一致)
   const [priorityFee, setPriorityFee] = useState<'default' | 'fast' | 'turbo'>('default');
   const [selectedDexes, setSelectedDexes] = useState<string[]>([]); // 选中的 DEX 列表，空数组表示自动选择
   const [onlyDirectRoutes, setOnlyDirectRoutes] = useState(false); // 是否仅使用直接路由
@@ -1014,21 +1014,21 @@ export function FlashLoanInterface() {
                         <div className="flex gap-1.5">
                           <Button
                             type="button"
+                            variant={slippageBps === 5 ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSlippageBps(5)}
+                            className="flex-1 text-xs h-8"
+                          >
+                            0.05%
+                          </Button>
+                          <Button
+                            type="button"
                             variant={slippageBps === 10 ? "default" : "outline"}
                             size="sm"
                             onClick={() => setSlippageBps(10)}
                             className="flex-1 text-xs h-8"
                           >
                             0.1%
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={slippageBps === 50 ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setSlippageBps(50)}
-                            className="flex-1 text-xs h-8"
-                          >
-                            0.5%
                           </Button>
                           <div className="flex-1 flex items-center justify-center gap-1 bg-slate-800/50 rounded px-2 border border-slate-700">
                             <Input

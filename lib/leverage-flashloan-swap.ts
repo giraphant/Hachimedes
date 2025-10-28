@@ -100,7 +100,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
           dexes: preferredDexes,
           onlyDirectRoutes: onlyDirectRoutes,
           restrictIntermediateTokens: true, // 限制中间代币，避免低流动性池子
-          maxAccounts: 40, // 限制最大账户数，减小交易体积
+          maxAccounts: 31, // 限制最大账户数，减小交易体积
         });
         console.log('✓ Got quote from preferred DEXes');
       } catch (e) {
@@ -111,7 +111,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
     // 如果没有指定 DEX 或失败，尝试获取最简路由（只用单个 DEX）
     if (!quoteResponse) {
       console.log('Attempting to get minimal route (single DEX)...');
-      const singleDexOptions = ['Orca', 'Raydium', 'Whirlpool'];
+      const singleDexOptions = ['PancakeSwap', 'Orca', 'Raydium', 'Whirlpool'];
 
       for (const dex of singleDexOptions) {
         try {
@@ -124,7 +124,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
             dexes: [dex], // 只用单个 DEX
             onlyDirectRoutes: onlyDirectRoutes,
             restrictIntermediateTokens: true,
-            maxAccounts: 40,
+            maxAccounts: 31,
           });
           console.log(`✓ Got quote from ${dex}`);
           break; // 找到就用
@@ -144,7 +144,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
         slippageBps,
         onlyDirectRoutes: onlyDirectRoutes,
         restrictIntermediateTokens: true,
-        maxAccounts: 40,
+        maxAccounts: 31,
       });
     }
 
