@@ -99,7 +99,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
         dexes: preferredDexes,
         onlyDirectRoutes: onlyDirectRoutes,
         restrictIntermediateTokens: true,
-        maxAccounts: 28,
+        maxAccounts: 32,
       });
     } else {
       // 没有指定 DEX，使用 Jupiter 自动路由（与官方一致）
@@ -111,7 +111,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
         slippageBps,
         onlyDirectRoutes: onlyDirectRoutes,
         restrictIntermediateTokens: true,
-        maxAccounts: 28,
+        maxAccounts: 32,
       });
     }
 
