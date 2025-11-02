@@ -16,6 +16,7 @@ export interface DeleverageJitoBundleParams {
   slippageBps?: number;
   preferredDexes?: string[];
   onlyDirectRoutes?: boolean;
+  maxAccounts?: number; // Jupiter maxAccounts 限制，默认 32
 }
 
 /**
@@ -43,6 +44,7 @@ export async function buildDeleverageJitoBundle(params: DeleverageJitoBundlePara
     slippageBps = 10,
     preferredDexes,
     onlyDirectRoutes = false,
+    maxAccounts = 32, // 默认 32 账户
   } = params;
 
   console.log('\n════════════════════════════════════════');
@@ -95,7 +97,7 @@ export async function buildDeleverageJitoBundle(params: DeleverageJitoBundlePara
         dexes: preferredDexes,
         onlyDirectRoutes,
         restrictIntermediateTokens: true,
-        maxAccounts: 32,
+        maxAccounts,
       });
     } else {
       console.log('Using auto DEX selection...');
@@ -106,7 +108,7 @@ export async function buildDeleverageJitoBundle(params: DeleverageJitoBundlePara
         slippageBps,
         onlyDirectRoutes,
         restrictIntermediateTokens: true,
-        maxAccounts: 32,
+        maxAccounts,
       });
     }
 

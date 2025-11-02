@@ -17,6 +17,7 @@ export interface LeverageFlashLoanSwapParams {
   preferredDexes?: string[];  // 偏好的 DEX 列表
   onlyDirectRoutes?: boolean; // 是否仅使用直接路由，默认 false
   useJitoBundle?: boolean;    // 是否使用 Jito Bundle，默认 false
+  maxAccounts?: number;       // Jupiter maxAccounts 限制，默认 32
 }
 
 /**
@@ -51,6 +52,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
     preferredDexes,
     onlyDirectRoutes = false,
     useJitoBundle = false,
+    maxAccounts = 32, // 默认 32 账户
   } = params;
 
   console.log('\n════════════════════════════════════════');
@@ -99,7 +101,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
         dexes: preferredDexes,
         onlyDirectRoutes: onlyDirectRoutes,
         restrictIntermediateTokens: true,
-        maxAccounts: 32,
+        maxAccounts,
       });
     } else {
       // 没有指定 DEX，使用 Jupiter 自动路由（与官方一致）
@@ -111,7 +113,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
         slippageBps,
         onlyDirectRoutes: onlyDirectRoutes,
         restrictIntermediateTokens: true,
-        maxAccounts: 32,
+        maxAccounts,
       });
     }
 
