@@ -80,6 +80,7 @@ export function FlashLoanInterface() {
   const [selectedDexes, setSelectedDexes] = useState<string[]>([]); // 选中的 DEX 列表，空数组表示自动选择
   const [onlyDirectRoutes, setOnlyDirectRoutes] = useState(false); // 是否仅使用直接路由
   const [useJitoBundle, setUseJitoBundle] = useState(false); // 是否使用 Jito Bundle
+  const [maxAccounts, setMaxAccounts] = useState(32); // Jupiter maxAccounts 限制，默认 32
 
   // Position 缓存辅助函数
   const getPositionCacheKey = (walletAddress: string, vaultId: number) => {
@@ -390,6 +391,7 @@ export function FlashLoanInterface() {
             slippageBps: slippageBps,
             preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
             onlyDirectRoutes: onlyDirectRoutes,
+            maxAccounts: maxAccounts,
           });
 
           transactions = result.transactions;
@@ -417,6 +419,7 @@ export function FlashLoanInterface() {
             slippageBps: slippageBps,
             preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
             onlyDirectRoutes: onlyDirectRoutes,
+            maxAccounts: maxAccounts,
             useJitoBundle: false,
           });
 
@@ -447,6 +450,7 @@ export function FlashLoanInterface() {
             slippageBps: slippageBps,
             preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
             onlyDirectRoutes: onlyDirectRoutes,
+            maxAccounts: maxAccounts,
           });
 
           transactions = result.transactions;
@@ -474,6 +478,7 @@ export function FlashLoanInterface() {
             slippageBps: slippageBps,
             preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
             onlyDirectRoutes: onlyDirectRoutes,
+            maxAccounts: maxAccounts,
             useJitoBundle: false,
           });
 
@@ -616,11 +621,16 @@ export function FlashLoanInterface() {
         error.message.includes('Transaction too large')
       );
 
-      if (isTxTooLarge && !onlyDirectRoutes) {
-        // TX 过大且未使用直接路由，提示切换
+      if (isTxTooLarge) {
+        // TX 过大，提示降低 maxAccounts
+        const suggestions = [];
+        if (maxAccounts > 20) suggestions.push(`降低「最大账户数」到 ${maxAccounts === 32 ? 28 : maxAccounts === 28 ? 24 : 20}`);
+        if (!onlyDirectRoutes) suggestions.push('切换到「仅直接路由」');
+        if (!useJitoBundle) suggestions.push('启用 Jito Bundle');
+
         toast({
-          title: '⚠️ 智能路由交易过大',
-          description: '请尝试在高级设置中切换到「仅直接路由」，或启用 Jito Bundle',
+          title: '⚠️ 交易过大（超过 1232 bytes）',
+          description: `请在高级设置中尝试：${suggestions.join('、')}`,
           variant: 'destructive',
         });
       } else {
@@ -1204,6 +1214,31 @@ export function FlashLoanInterface() {
                             </Button>
                           ))}
                         </div>
+                      </div>
+
+                      {/* 最大账户数 */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-slate-300 text-xs">最大账户数</Label>
+                          <span className="text-xs text-slate-500">{maxAccounts}</span>
+                        </div>
+                        <div className="flex gap-1.5">
+                          {[32, 28, 24, 20].map((value) => (
+                            <Button
+                              key={value}
+                              type="button"
+                              variant={maxAccounts === value ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setMaxAccounts(value)}
+                              className="flex-1 text-xs h-8"
+                            >
+                              {value}
+                            </Button>
+                          ))}
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          交易过大时降低此值 (32→28→24→20)
+                        </p>
                       </div>
                     </div>
                   </PopoverContent>
