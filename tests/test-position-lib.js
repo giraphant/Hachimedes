@@ -5,7 +5,7 @@
 const { Connection, PublicKey } = require('@solana/web3.js');
 const { fetchPositionInfo } = require('./lib/position.ts');
 
-const RPC_URL = 'https://mainnet.helius-rpc.com/?api-key=3f46e620-a242-429f-9da9-07ca0df4030e';
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'https://api.mainnet-beta.solana.com';
 const VAULT_ID = 34;
 const POSITION_ID = 335;
 const TEST_WALLET = new PublicKey('9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM');

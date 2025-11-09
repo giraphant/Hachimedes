@@ -3,7 +3,7 @@ const { Program, AnchorProvider } = require('@coral-xyz/anchor');
 const { Wallet } = require('@coral-xyz/anchor/dist/cjs/provider');
 const { Keypair } = require('@solana/web3.js');
 
-const RPC_URL = 'https://mainnet.helius-rpc.com/?api-key=3f46e620-a242-429f-9da9-07ca0df4030e';
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'https://api.mainnet-beta.solana.com';
 const VAULT_ADDRESS = '2TTGSRSezqFzeLUH8JwRUbtN66XLLaymfYsWRTMjfiMw';
 const PROGRAM_ID = 'rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ';
 
