@@ -1,6 +1,20 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getCurrentPosition, getCurrentPositionState } from '@jup-ag/lend/borrow';
 import { getVaultConfig } from './vaults';
+import { STABLECOIN_SYMBOLS } from './constants';
+
+// Pyth Hermes API for fetching SOL and other token prices
+const PYTH_HERMES_URL = 'https://hermes.pyth.network/api/latest_price_feeds';
+// Pyth price feed IDs (from pyth.network)
+const PYTH_PRICE_FEEDS: Record<string, string> = {
+  SOL: 'ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d',
+  ETH: 'ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace',
+  BTC: 'e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43',
+  wBTC: 'e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43',
+  cbBTC: 'e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43',
+  LBTC: 'e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43',
+  xBTC: 'e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43',
+};
 
 export interface PositionInfo {
   positionId: number;
@@ -12,7 +26,8 @@ export interface PositionInfo {
   debtAmountUi: number;
   healthFactor?: number;
   ltv?: number;
-  oraclePrice?: number; // Pyth 预言机价格 (collateral/debt)
+  oraclePrice?: number;  // 抵押品 USD 价格
+  debtPrice?: number;    // 债务代币 USD 价格 (稳定币 = 1.0)
 }
 
 /**
@@ -79,22 +94,68 @@ async function readPriceFromOracle(
 }
 
 /**
- * 从 Vault 配置获取预言机地址并读取价格
+ * 从 Pyth Hermes API 获取代币的 USD 价格
+ * @param symbol 代币符号 (如 "SOL", "ETH")
+ * @returns USD 价格，或 null
+ */
+async function fetchPriceFromPyth(symbol: string): Promise<number | null> {
+  const feedId = PYTH_PRICE_FEEDS[symbol];
+  if (!feedId) {
+    console.warn(`[pyth] No price feed ID for ${symbol}`);
+    return null;
+  }
+
+  try {
+    const url = `${PYTH_HERMES_URL}?ids[]=${feedId}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`[pyth] HTTP error: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    for (const feed of data || []) {
+      const priceData = feed?.price;
+      if (priceData?.price !== undefined && priceData?.expo !== undefined) {
+        const price = parseFloat(priceData.price) * Math.pow(10, priceData.expo);
+        console.log(`[pyth] ${symbol} price: $${price.toFixed(4)}`);
+        return price;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error(`[pyth] Error fetching ${symbol} price:`, error);
+    return null;
+  }
+}
+
+/**
+ * 获取债务代币的 USD 价格
+ * - 稳定币返回 $1.0
+ * - 非稳定币从 Pyth 获取价格
+ */
+async function getDebtPriceUsd(debtSymbol: string): Promise<number | null> {
+  if (STABLECOIN_SYMBOLS.has(debtSymbol)) {
+    return 1.0;
+  }
+  return fetchPriceFromPyth(debtSymbol);
+}
+
+/**
+ * 从 Vault 配置获取预言机地址并读取抵押品价格 (USD)
  * @param connection Solana 连接
  * @param vaultId Vault ID
- * @returns 价格（collateral 相对于 debt 的价格）
+ * @returns 抵押品的 USD 价格
  */
-async function readPriceForVault(
+async function readCollateralPriceForVault(
   connection: Connection,
   vaultId: number
 ): Promise<number | null> {
   try {
     const vaultConfig = getVaultConfig(vaultId);
-
-    // 直接使用配置中的预言机地址
     return await readPriceFromOracle(connection, vaultConfig.oracleAddress);
   } catch (error) {
-    console.error('Error reading price for vault:', error);
+    console.error('Error reading collateral price for vault:', error);
     return null;
   }
 }
@@ -143,26 +204,34 @@ export async function fetchPositionInfo(
     console.log('  Debt:', debtAmountUi);
 
     // 计算 LTV（使用预言机价格）
+    // LTV = (debt × debtPrice) / (collateral × collateralPrice) × 100
     let ltv: number | undefined;
     let oraclePrice: number | undefined;
+    let debtPrice: number | undefined;
     if (collateralAmountUi > 0 && debtAmountUi > 0) {
       try {
         // 获取 Vault 配置
         const vaultConfig = getVaultConfig(vaultId);
 
-        // 从预言机读取价格
-        const price = await readPriceForVault(connection, vaultId);
+        // 从预言机读取抵押品 USD 价格
+        const collateralPriceUsd = await readCollateralPriceForVault(connection, vaultId);
+        // 获取债务代币 USD 价格（稳定币 = $1，非稳定币从 Pyth 获取）
+        const debtPriceUsd = await getDebtPriceUsd(vaultConfig.debtToken);
 
-        if (price) {
-          oraclePrice = price; // 保存预言机价格
-          // LTV = debt / (collateral × price) × 100
-          // price 是 collateral 相对于 debt 的价格
-          ltv = (debtAmountUi / (collateralAmountUi * price)) * 100;
+        if (collateralPriceUsd && debtPriceUsd) {
+          oraclePrice = collateralPriceUsd;
+          debtPrice = debtPriceUsd;
 
-          console.log('Collateral price:', price.toFixed(6), 'per', vaultConfig.collateralToken);
+          // 正确的 LTV 公式：(债务价值 USD) / (抵押品价值 USD) × 100
+          const debtValueUsd = debtAmountUi * debtPriceUsd;
+          const collateralValueUsd = collateralAmountUi * collateralPriceUsd;
+          ltv = (debtValueUsd / collateralValueUsd) * 100;
+
+          console.log(`Collateral: ${collateralAmountUi.toFixed(4)} ${vaultConfig.collateralToken} @ $${collateralPriceUsd.toFixed(4)} = $${collateralValueUsd.toFixed(2)}`);
+          console.log(`Debt: ${debtAmountUi.toFixed(4)} ${vaultConfig.debtToken} @ $${debtPriceUsd.toFixed(4)} = $${debtValueUsd.toFixed(2)}`);
           console.log('Calculated LTV:', ltv.toFixed(2) + '%');
         } else {
-          console.warn('Failed to read price from oracle, LTV not available');
+          console.warn(`Failed to get prices: collateral=$${collateralPriceUsd}, debt=$${debtPriceUsd}`);
         }
       } catch (e) {
         console.error('Failed to calculate LTV:', e);
@@ -179,6 +248,7 @@ export async function fetchPositionInfo(
       debtAmountUi,
       ltv,
       oraclePrice,
+      debtPrice,
     };
   } catch (error) {
     console.error('Error fetching position:', error);
