@@ -117,10 +117,43 @@ export async function buildRebalanceTransaction(params: RebalanceParams): Promis
 
     if (serialized.length <= 1232) {
       console.log(`Single transaction: ${serialized.length} bytes`);
+
+      // Simulate transaction before returning
+      console.log('\n[Step 3] Simulating transaction...');
+      try {
+        const simResult = await connection.simulateTransaction(tx, {
+          sigVerify: false,
+          replaceRecentBlockhash: true,
+        });
+
+        if (simResult.value.err) {
+          console.error('Simulation failed:', simResult.value.err);
+          console.error('Logs:', simResult.value.logs);
+
+          // Parse the error for user-friendly message
+          const logs = simResult.value.logs || [];
+          const errorLog = logs.find(l => l.includes('Error:') || l.includes('failed:'));
+          const errorMsg = errorLog || JSON.stringify(simResult.value.err);
+          throw new Error(`Transaction simulation failed: ${errorMsg}`);
+        }
+        console.log('  ✓ Simulation passed');
+        console.log(`  Compute units: ${simResult.value.unitsConsumed}`);
+      } catch (simErr: any) {
+        // Re-throw with more context
+        if (simErr.message?.includes('simulation failed')) {
+          throw simErr;
+        }
+        throw new Error(`Simulation error: ${simErr.message || simErr}`);
+      }
+
       return { transactions: [tx], mode: 'single' };
     }
     console.log(`Single TX too large: ${serialized.length} bytes, falling back to Jito Bundle`);
-  } catch {
+  } catch (err: any) {
+    // If it's a simulation error, propagate it
+    if (err.message?.includes('simulation') || err.message?.includes('Simulation')) {
+      throw err;
+    }
     console.log('Single TX failed to serialize, falling back to Jito Bundle');
   }
 

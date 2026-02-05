@@ -685,14 +685,74 @@ export function FlashLoanInterface() {
     }
   };
 
+  // Cache keys for all positions
+  const getAllPositionsCacheKey = (walletAddress: string, collateralMint: string) =>
+    `hachimedes_all_positions_${walletAddress}_${collateralMint}`;
+
+  const getCachedAllPositions = (walletAddress: string, collateralMint: string): Record<number, { positionId: number }> | null => {
+    try {
+      const key = getAllPositionsCacheKey(walletAddress, collateralMint);
+      const cached = localStorage.getItem(key);
+      if (!cached) return null;
+      const data = JSON.parse(cached);
+      // Check cache age (24 hours max)
+      if (data.timestamp && Date.now() - data.timestamp > 24 * 60 * 60 * 1000) {
+        return null;
+      }
+      return data.positions;
+    } catch {
+      return null;
+    }
+  };
+
+  const setCachedAllPositions = (walletAddress: string, collateralMint: string, positions: Record<number, { positionId: number }>) => {
+    try {
+      const key = getAllPositionsCacheKey(walletAddress, collateralMint);
+      localStorage.setItem(key, JSON.stringify({ positions, timestamp: Date.now() }));
+    } catch {
+      // ignore quota errors
+    }
+  };
+
   // Load positions for all same-collateral vaults (for rebalance)
-  const loadAllSameCollateralPositions = async (collateralMint: string) => {
+  // Uses stale-while-revalidate: returns cached data immediately, refreshes in background
+  const loadAllSameCollateralPositions = async (collateralMint: string, forceRefresh = false) => {
     if (!publicKey) return;
+
+    const sameColVaults = discoveredVaults.filter(v => v.collateralMint === collateralMint);
+
+    // Step 1: Try to load from cache immediately
+    if (!forceRefresh) {
+      const cached = getCachedAllPositions(publicKey.toString(), collateralMint);
+      if (cached) {
+        console.log('[rebalance] Loading cached position IDs, will refresh in background');
+        // Load position info for cached position IDs
+        const results: Record<number, PositionInfo | null> = {};
+        const loadPromises = Object.entries(cached).map(async ([vid, data]) => {
+          const vaultId = parseInt(vid);
+          try {
+            const info = await fetchPositionInfo(connection, vaultId, data.positionId, publicKey);
+            if (info) results[vaultId] = info;
+          } catch {
+            // skip failed
+          }
+        });
+        await Promise.all(loadPromises);
+        setAllPositions(results);
+        setIsLoadingAllPositions(false);
+
+        // Background refresh
+        refreshAllPositionsInBackground(collateralMint, sameColVaults);
+        return;
+      }
+    }
+
+    // Step 2: Full scan
     setIsLoadingAllPositions(true);
     try {
-      const sameColVaults = discoveredVaults.filter(v => v.collateralMint === collateralMint);
       const { findUserPositionsByNFT } = await import('@/lib/find-positions-nft');
       const results: Record<number, PositionInfo | null> = {};
+      const positionIdsCache: Record<number, { positionId: number }> = {};
 
       for (const vault of sameColVaults) {
         try {
@@ -700,16 +760,54 @@ export function FlashLoanInterface() {
           if (positions.length > 0) {
             const info = await fetchPositionInfo(connection, vault.id, positions[0], publicKey);
             results[vault.id] = info;
+            positionIdsCache[vault.id] = { positionId: positions[0] };
           }
         } catch {
           // skip failed vaults
         }
       }
+
       setAllPositions(results);
+      // Cache the position IDs (not the full info, just IDs)
+      if (Object.keys(positionIdsCache).length > 0) {
+        setCachedAllPositions(publicKey.toString(), collateralMint, positionIdsCache);
+      }
     } catch (e) {
       console.error('Failed to load positions:', e);
     } finally {
       setIsLoadingAllPositions(false);
+    }
+  };
+
+  // Background refresh for all positions
+  const refreshAllPositionsInBackground = async (collateralMint: string, sameColVaults: typeof discoveredVaults) => {
+    if (!publicKey) return;
+    try {
+      const { findUserPositionsByNFT } = await import('@/lib/find-positions-nft');
+      const results: Record<number, PositionInfo | null> = {};
+      const positionIdsCache: Record<number, { positionId: number }> = {};
+
+      for (const vault of sameColVaults) {
+        try {
+          const positions = await findUserPositionsByNFT(connection, vault.id, publicKey, 100000);
+          if (positions.length > 0) {
+            const info = await fetchPositionInfo(connection, vault.id, positions[0], publicKey);
+            results[vault.id] = info;
+            positionIdsCache[vault.id] = { positionId: positions[0] };
+          }
+        } catch {
+          // skip
+        }
+      }
+
+      // Update state and cache
+      setAllPositions(results);
+      if (Object.keys(positionIdsCache).length > 0) {
+        setCachedAllPositions(publicKey.toString(), collateralMint, positionIdsCache);
+      }
+      console.log('[rebalance] Background refresh complete');
+    } catch {
+      // silent fail for background refresh
     }
   };
 
