@@ -17,6 +17,8 @@ export interface DeleverageJitoBundleParams {
   preferredDexes?: string[];
   onlyDirectRoutes?: boolean;
   maxAccounts?: number; // Jupiter maxAccounts 限制，默认 32
+  debtDecimals?: number;      // Debt token decimals, default 6
+  collateralDecimals?: number; // Collateral token decimals, default 6
 }
 
 /**
@@ -45,17 +47,22 @@ export async function buildDeleverageJitoBundle(params: DeleverageJitoBundlePara
     preferredDexes,
     onlyDirectRoutes = false,
     maxAccounts = 32, // 默认 32 账户
+    debtDecimals = 6,
+    collateralDecimals = 6,
   } = params;
+
+  const debtScale = Math.pow(10, debtDecimals);
+  const collateralScale = Math.pow(10, collateralDecimals);
 
   console.log('\n════════════════════════════════════════');
   console.log('  Deleverage with Jito Bundle (3 TXs)');
   console.log('════════════════════════════════════════');
-  console.log('Withdraw Amount:', withdrawAmount, 'JLP');
+  console.log('Withdraw Amount:', withdrawAmount);
   console.log('Vault ID:', vaultId);
   console.log('Position ID:', positionId);
 
   try {
-    const withdrawAmountRaw = Math.floor(withdrawAmount * 1e6);
+    const withdrawAmountRaw = Math.floor(withdrawAmount * collateralScale);
 
     // ============================================================
     // TX1: Withdraw JLP
@@ -113,8 +120,8 @@ export async function buildDeleverageJitoBundle(params: DeleverageJitoBundlePara
     }
 
     console.log('Swap quote:');
-    console.log('  Input:', parseInt(quoteResponse.inAmount) / 1e6, 'JLP');
-    console.log('  Output:', parseInt(quoteResponse.outAmount) / 1e6, 'USDS');
+    console.log('  Input:', parseInt(quoteResponse.inAmount) / collateralScale);
+    console.log('  Output:', parseInt(quoteResponse.outAmount) / debtScale);
 
     const swapResult = await jupiterApi.swapInstructionsPost({
       swapRequest: {
@@ -157,25 +164,27 @@ export async function buildDeleverageJitoBundle(params: DeleverageJitoBundlePara
     console.log('\n[TX3] Building Repay USDS transaction...');
 
     // Use safe amount rounding (same logic as flash loan version)
-    const swapOutputUsds = parseInt(quoteResponse.outAmount) / 1e6;
-    console.log(`Swap output: ${swapOutputUsds.toFixed(2)} USDS`);
+    const swapOutputDebt = parseInt(quoteResponse.outAmount) / debtScale;
+    console.log(`Swap output: ${swapOutputDebt.toFixed(6)}`);
 
-    let safeAmountUsds: number;
-    if (swapOutputUsds >= 8) {
-      safeAmountUsds = Math.floor(swapOutputUsds);
-      console.log(`✅ Safe zone (≥8 USDS): Using ${safeAmountUsds} USDS`);
-    } else if (swapOutputUsds >= 5) {
-      safeAmountUsds = 5;
-      console.log(`✅ Rounding to safe amount: 5 USDS`);
-    } else if (swapOutputUsds >= 3) {
-      safeAmountUsds = 3;
-      console.log(`✅ Rounding to safe amount: 3 USDS`);
+    let safeRepayAmount: number;
+    if (debtScale === 1e6) {
+      // 6-decimal stablecoins: use known safe amounts
+      if (swapOutputDebt >= 8) {
+        safeRepayAmount = Math.floor(swapOutputDebt);
+      } else if (swapOutputDebt >= 5) {
+        safeRepayAmount = 5;
+      } else if (swapOutputDebt >= 3) {
+        safeRepayAmount = 3;
+      } else {
+        safeRepayAmount = swapOutputDebt;
+      }
     } else {
-      safeAmountUsds = swapOutputUsds;
-      console.log(`⚠️  Amount too small (<3 USDS), may need init`);
+      safeRepayAmount = Math.floor(swapOutputDebt);
     }
+    console.log(`Safe repay amount: ${safeRepayAmount}`);
 
-    const repayAmountRaw = Math.floor(safeAmountUsds * 1e6);
+    const repayAmountRaw = Math.floor(safeRepayAmount * debtScale);
 
     const repayResult = await getOperateIx({
       vaultId,

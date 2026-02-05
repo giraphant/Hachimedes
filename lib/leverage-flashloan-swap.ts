@@ -18,6 +18,8 @@ export interface LeverageFlashLoanSwapParams {
   onlyDirectRoutes?: boolean; // 是否仅使用直接路由，默认 false
   useJitoBundle?: boolean;    // 是否使用 Jito Bundle，默认 false
   maxAccounts?: number;       // Jupiter maxAccounts 限制，默认 32
+  debtDecimals?: number;      // Debt token decimals, default 6
+  collateralDecimals?: number; // Collateral token decimals, default 6
 }
 
 /**
@@ -53,17 +55,22 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
     onlyDirectRoutes = false,
     useJitoBundle = false,
     maxAccounts = 32, // 默认 32 账户
+    debtDecimals = 6,
+    collateralDecimals = 6,
   } = params;
+
+  const debtScale = Math.pow(10, debtDecimals);
+  const collateralScale = Math.pow(10, collateralDecimals);
 
   console.log('\n════════════════════════════════════════');
   console.log('  Leverage with Flash Loan + Swap');
   console.log('════════════════════════════════════════');
-  console.log('Flash Loan Amount:', flashLoanAmount, 'USDS');
+  console.log('Flash Loan Amount:', flashLoanAmount);
   console.log('Vault ID:', vaultId);
   console.log('Position ID:', positionId);
 
   try {
-    const flashLoanAmountRaw = Math.floor(flashLoanAmount * 1e6);
+    const flashLoanAmountRaw = Math.floor(flashLoanAmount * debtScale);
 
     // Step 1: Flash Borrow USDS from liquidity pool
     console.log('\n[1/5] Building Flash Borrow instruction...');
@@ -122,9 +129,9 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
     }
 
     console.log('Swap quote:');
-    console.log('  Input:', parseInt(quoteResponse.inAmount) / 1e6, 'USDS');
-    console.log('  Expected output:', parseInt(quoteResponse.outAmount) / 1e6, 'JLP');
-    console.log('  Minimum output:', parseInt(quoteResponse.otherAmountThreshold || quoteResponse.outAmount) / 1e6, 'JLP');
+    console.log('  Input:', parseInt(quoteResponse.inAmount) / debtScale);
+    console.log('  Expected output:', parseInt(quoteResponse.outAmount) / collateralScale);
+    console.log('  Minimum output:', parseInt(quoteResponse.otherAmountThreshold || quoteResponse.outAmount) / collateralScale);
     console.log('  Price impact:', quoteResponse.priceImpactPct || 'N/A');
 
     const swapResult = await jupiterApi.swapInstructionsPost({
@@ -185,31 +192,30 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
     console.log('\n[3/5] Building Operate instruction (deposit + borrow)...');
 
     // 🎯 OPTIMIZATION: Round up to safe amount to avoid init instructions
-    // 对于 Leverage，我们需要借出的 USDS 要能还 Flash Loan
-    const expectedSwapOutputJlp = parseInt(quoteResponse.outAmount) / 1e6;
-    const minSwapOutputJlp = parseInt(quoteResponse.otherAmountThreshold || quoteResponse.outAmount) / 1e6;
-    console.log(`Swap output (expected): ${expectedSwapOutputJlp.toFixed(4)} JLP`);
-    console.log(`Swap output (minimum): ${minSwapOutputJlp.toFixed(4)} JLP`);
+    const expectedSwapOutput = parseInt(quoteResponse.outAmount) / collateralScale;
+    const minSwapOutput = parseInt(quoteResponse.otherAmountThreshold || quoteResponse.outAmount) / collateralScale;
+    console.log(`Swap output (expected): ${expectedSwapOutput.toFixed(4)}`);
+    console.log(`Swap output (minimum): ${minSwapOutput.toFixed(4)}`);
 
-    // Leverage 的逻辑：我们要借出的 USDS 必须 ≥ flash loan amount
-    // 但要向上取整到安全金额
-    let safeBorrowAmountUsds: number;
-    if (flashLoanAmount >= 8) {
-      // 已经在安全区间，向上取整
-      safeBorrowAmountUsds = Math.ceil(flashLoanAmount);
-      console.log(`✅ Safe zone (≥8 USDS): Borrowing ${safeBorrowAmountUsds} USDS`);
-    } else if (flashLoanAmount >= 5) {
-      safeBorrowAmountUsds = 8; // 向上到下一个安全金额
-      console.log(`✅ Rounding to safe amount: 8 USDS (extra: ${(8 - flashLoanAmount).toFixed(2)} USDS)`);
-    } else if (flashLoanAmount >= 3) {
-      safeBorrowAmountUsds = 5;
-      console.log(`✅ Rounding to safe amount: 5 USDS (extra: ${(5 - flashLoanAmount).toFixed(2)} USDS)`);
+    // Round up to safe amount (safe amount rounding only applies to 6-decimal stablecoins)
+    let safeBorrowAmount: number;
+    if (debtScale === 1e6) {
+      // 6-decimal stablecoins: use known safe amounts
+      if (flashLoanAmount >= 8) {
+        safeBorrowAmount = Math.ceil(flashLoanAmount);
+      } else if (flashLoanAmount >= 5) {
+        safeBorrowAmount = 8;
+      } else if (flashLoanAmount >= 3) {
+        safeBorrowAmount = 5;
+      } else {
+        safeBorrowAmount = 3;
+      }
     } else {
-      safeBorrowAmountUsds = 3;
-      console.log(`✅ Rounding to safe amount: 3 USDS (extra: ${(3 - flashLoanAmount).toFixed(2)} USDS)`);
+      safeBorrowAmount = Math.ceil(flashLoanAmount);
     }
+    console.log(`Safe borrow amount: ${safeBorrowAmount}`);
 
-    const borrowAmountRaw = Math.floor(safeBorrowAmountUsds * 1e6);
+    const borrowAmountRaw = Math.floor(safeBorrowAmount * debtScale);
 
     // 🎯 CRITICAL FIX: Use minimum output (accounting for slippage) instead of expected output
     // The actual swap might output slightly less due to slippage, causing "insufficient funds"
@@ -243,15 +249,15 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
       operateInstructions = [operateResult.ixs[0]];
     }
     console.log('✓ Operate instruction ready');
-    console.log('  Deposit amount:', depositAmountRaw / 1e6, 'JLP');
-    console.log('  Borrow amount:', borrowAmountRaw / 1e6, 'USDS');
-    console.log('  Flash loan amount:', flashLoanAmountRaw / 1e6, 'USDS');
+    console.log('  Deposit amount:', depositAmountRaw / collateralScale);
+    console.log('  Borrow amount:', borrowAmountRaw / debtScale);
+    console.log('  Flash loan amount:', flashLoanAmountRaw / debtScale);
     if (borrowAmountRaw > flashLoanAmountRaw) {
-      const extra = (borrowAmountRaw - flashLoanAmountRaw) / 1e6;
-      console.log(`  Extra USDS borrowed: ${extra.toFixed(6)} USDS (will remain in wallet)`);
+      const extra = (borrowAmountRaw - flashLoanAmountRaw) / debtScale;
+      console.log(`  Extra borrowed: ${extra.toFixed(6)} (will remain in wallet)`);
     } else if (borrowAmountRaw < flashLoanAmountRaw) {
-      const shortage = (flashLoanAmountRaw - borrowAmountRaw) / 1e6;
-      console.log(`  ⚠️ Shortage: ${shortage.toFixed(6)} USDS (must be in wallet!)`);
+      const shortage = (flashLoanAmountRaw - borrowAmountRaw) / debtScale;
+      console.log(`  ⚠️ Shortage: ${shortage.toFixed(6)} (must be in wallet!)`);
     }
 
     // Step 4: Flash Payback USDS to liquidity pool

@@ -18,6 +18,8 @@ export interface DeleverageFlashLoanSwapParams {
   onlyDirectRoutes?: boolean; // 是否仅使用直接路由，默认 false
   useJitoBundle?: boolean;    // 是否使用 Jito Bundle，默认 false
   maxAccounts?: number;       // Jupiter maxAccounts 限制，默认 32
+  debtDecimals?: number;      // Debt token decimals, default 6
+  collateralDecimals?: number; // Collateral token decimals, default 6
 }
 
 /**
@@ -53,17 +55,22 @@ export async function buildDeleverageFlashLoanSwap(params: DeleverageFlashLoanSw
     onlyDirectRoutes = false,
     useJitoBundle = false,
     maxAccounts = 32, // 默认 32 账户
+    debtDecimals = 6,
+    collateralDecimals = 6,
   } = params;
+
+  const debtScale = Math.pow(10, debtDecimals);
+  const collateralScale = Math.pow(10, collateralDecimals);
 
   console.log('\n════════════════════════════════════════');
   console.log('  Deleverage with Flash Loan + Swap');
   console.log('════════════════════════════════════════');
-  console.log('Flash Loan Amount:', flashLoanAmount, 'JLP');
+  console.log('Flash Loan Amount:', flashLoanAmount);
   console.log('Vault ID:', vaultId);
   console.log('Position ID:', positionId);
 
   try {
-    const flashLoanAmountRaw = Math.floor(flashLoanAmount * 1e6);
+    const flashLoanAmountRaw = Math.floor(flashLoanAmount * collateralScale);
 
     // Step 1: Flash Borrow JLP from liquidity pool
     console.log('\n[1/5] Building Flash Borrow instruction...');
@@ -122,8 +129,8 @@ export async function buildDeleverageFlashLoanSwap(params: DeleverageFlashLoanSw
     }
 
     console.log('Swap quote:');
-    console.log('  Input:', parseInt(quoteResponse.inAmount) / 1e6, 'JLP');
-    console.log('  Output:', parseInt(quoteResponse.outAmount) / 1e6, 'USDS');
+    console.log('  Input:', parseInt(quoteResponse.inAmount) / collateralScale);
+    console.log('  Output:', parseInt(quoteResponse.outAmount) / debtScale);
     console.log('  Price impact:', quoteResponse.priceImpactPct || 'N/A');
 
     const swapResult = await jupiterApi.swapInstructionsPost({
@@ -212,28 +219,27 @@ export async function buildDeleverageFlashLoanSwap(params: DeleverageFlashLoanSw
     console.log('\n[3/5] Building Operate instruction (repay + withdraw)...');
 
     // 🎯 OPTIMIZATION: Round down to safe amount to avoid init instructions
-    // Based on testing: amounts ≥8 USDS never need init, and 3, 5 are also safe
-    const swapOutputUsds = parseInt(quoteResponse.outAmount) / 1e6;
-    console.log(`Swap output: ${swapOutputUsds.toFixed(2)} USDS`);
+    const swapOutputDebt = parseInt(quoteResponse.outAmount) / debtScale;
+    console.log(`Swap output: ${swapOutputDebt.toFixed(6)}`);
 
-    let safeAmountUsds: number;
-    if (swapOutputUsds >= 8) {
-      // Safe zone: round down to nearest integer
-      safeAmountUsds = Math.floor(swapOutputUsds);
-      console.log(`✅ Safe zone (≥8 USDS): Using ${safeAmountUsds} USDS`);
-    } else if (swapOutputUsds >= 5) {
-      safeAmountUsds = 5;
-      console.log(`✅ Rounding to safe amount: 5 USDS (dust: ${(swapOutputUsds - 5).toFixed(2)} USDS)`);
-    } else if (swapOutputUsds >= 3) {
-      safeAmountUsds = 3;
-      console.log(`✅ Rounding to safe amount: 3 USDS (dust: ${(swapOutputUsds - 3).toFixed(2)} USDS)`);
+    let safeRepayAmount: number;
+    if (debtScale === 1e6) {
+      // 6-decimal stablecoins: use known safe amounts
+      if (swapOutputDebt >= 8) {
+        safeRepayAmount = Math.floor(swapOutputDebt);
+      } else if (swapOutputDebt >= 5) {
+        safeRepayAmount = 5;
+      } else if (swapOutputDebt >= 3) {
+        safeRepayAmount = 3;
+      } else {
+        safeRepayAmount = swapOutputDebt;
+      }
     } else {
-      // Too small, would need init - accept it
-      safeAmountUsds = swapOutputUsds;
-      console.log(`⚠️  Amount too small (<3 USDS), may need init`);
+      safeRepayAmount = Math.floor(swapOutputDebt);
     }
+    console.log(`Safe repay amount: ${safeRepayAmount}`);
 
-    const repayAmountRaw = Math.floor(safeAmountUsds * 1e6);
+    const repayAmountRaw = Math.floor(safeRepayAmount * debtScale);
 
     // ⚠️ CRITICAL: 必须同时：
     // 1. 还 USDS 债务 (debtAmount < 0)
@@ -262,11 +268,11 @@ export async function buildDeleverageFlashLoanSwap(params: DeleverageFlashLoanSw
       repayInstructions = [repayResult.ixs[0]];
     }
     console.log('✓ Repay instruction ready');
-    console.log('  Repay amount:', repayAmountRaw / 1e6, 'USDS');
-    console.log('  Actual swap output:', parseInt(quoteResponse.outAmount) / 1e6, 'USDS');
+    console.log('  Repay amount:', repayAmountRaw / debtScale);
+    console.log('  Actual swap output:', parseInt(quoteResponse.outAmount) / debtScale);
     if (repayAmountRaw < parseInt(quoteResponse.outAmount)) {
-      const dust = (parseInt(quoteResponse.outAmount) - repayAmountRaw) / 1e6;
-      console.log(`  Dust remaining in wallet: ${dust.toFixed(6)} USDS`);
+      const dust = (parseInt(quoteResponse.outAmount) - repayAmountRaw) / debtScale;
+      console.log(`  Dust remaining in wallet: ${dust.toFixed(6)}`);
     }
 
     // Step 4: Flash Payback JLP to liquidity pool

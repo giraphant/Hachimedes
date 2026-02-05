@@ -23,7 +23,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { PositionInfo } from '@/lib/position';
 import { Slider } from '@/components/ui/slider';
-import { TOKENS } from '@/lib/constants';
 import { getVaultConfig } from '@/lib/vaults';
 
 type OperationType = 'deposit' | 'withdraw' | 'borrow' | 'repay';
@@ -73,21 +72,17 @@ export function PositionManageDialog({
       const { PublicKey } = await import('@solana/web3.js');
       const { getAccount, getAssociatedTokenAddressSync } = await import('@solana/spl-token');
 
-      const vaultConfig = getVaultConfig(vaultId);
-      const collateralToken = TOKENS[vaultConfig.collateralToken];
-      const debtToken = TOKENS[vaultConfig.debtToken];
+      const vc = getVaultConfig(vaultId);
 
-      // 获取 ATA 地址
       const collateralAta = getAssociatedTokenAddressSync(
-        new PublicKey(collateralToken.mint),
+        new PublicKey(vc.collateralMint),
         publicKey
       );
       const debtAta = getAssociatedTokenAddressSync(
-        new PublicKey(debtToken.mint),
+        new PublicKey(vc.debtMint),
         publicKey
       );
 
-      // 查询余额
       const [collateralAccount, debtAccount] = await Promise.all([
         getAccount(connection, collateralAta).catch(() => null),
         getAccount(connection, debtAta).catch(() => null),
@@ -95,10 +90,10 @@ export function PositionManageDialog({
 
       setWalletBalances({
         collateral: collateralAccount
-          ? Number(collateralAccount.amount) / Math.pow(10, collateralToken.decimals)
+          ? Number(collateralAccount.amount) / Math.pow(10, vc.collateralDecimals)
           : 0,
         debt: debtAccount
-          ? Number(debtAccount.amount) / Math.pow(10, debtToken.decimals)
+          ? Number(debtAccount.amount) / Math.pow(10, vc.debtDecimals)
           : 0,
       });
     } catch (error) {
@@ -365,25 +360,25 @@ export function PositionManageDialog({
                 <SelectItem value="deposit">
                   <div className="flex items-center gap-2">
                     {operationIcons.deposit}
-                    <span>存入抵押品（JLP）</span>
+                    <span>存入抵押品（{getVaultConfig(vaultId).collateralToken}）</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="withdraw">
                   <div className="flex items-center gap-2">
                     {operationIcons.withdraw}
-                    <span>取出抵押品（JLP）</span>
+                    <span>取出抵押品（{getVaultConfig(vaultId).collateralToken}）</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="borrow">
                   <div className="flex items-center gap-2">
                     {operationIcons.borrow}
-                    <span>借出债务（USDS）</span>
+                    <span>借出债务（{getVaultConfig(vaultId).debtToken}）</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="repay">
                   <div className="flex items-center gap-2">
                     {operationIcons.repay}
-                    <span>偿还债务（USDS）</span>
+                    <span>偿还债务（{getVaultConfig(vaultId).debtToken}）</span>
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -394,7 +389,7 @@ export function PositionManageDialog({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label>
-                金额 ({operationType === 'deposit' || operationType === 'withdraw' ? 'JLP' : 'USDS'})
+                金额 ({operationType === 'deposit' || operationType === 'withdraw' ? getVaultConfig(vaultId).collateralToken : getVaultConfig(vaultId).debtToken})
               </Label>
               <div className="text-xs text-slate-400">
                 {isLoadingBalances ? (
@@ -465,11 +460,11 @@ export function PositionManageDialog({
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <div className="text-slate-400">抵押品</div>
-                <div className="font-mono">{positionInfo.collateralAmountUi.toFixed(4)} JLP</div>
+                <div className="font-mono">{positionInfo.collateralAmountUi.toFixed(4)} {getVaultConfig(vaultId).collateralToken}</div>
               </div>
               <div>
                 <div className="text-slate-400">债务</div>
-                <div className="font-mono">{positionInfo.debtAmountUi.toFixed(2)} USDS</div>
+                <div className="font-mono">{positionInfo.debtAmountUi.toFixed(2)} {getVaultConfig(vaultId).debtToken}</div>
               </div>
               <div>
                 <div className="text-slate-400">LTV</div>
@@ -486,13 +481,13 @@ export function PositionManageDialog({
                 <div>
                   <div className="text-slate-400">抵押品</div>
                   <div className="font-mono text-blue-300">
-                    {predictedValues.newCollateral.toFixed(4)} JLP
+                    {predictedValues.newCollateral.toFixed(4)} {getVaultConfig(vaultId).collateralToken}
                   </div>
                 </div>
                 <div>
                   <div className="text-slate-400">债务</div>
                   <div className="font-mono text-blue-300">
-                    {predictedValues.newDebt.toFixed(2)} USDS
+                    {predictedValues.newDebt.toFixed(2)} {getVaultConfig(vaultId).debtToken}
                   </div>
                 </div>
                 <div>

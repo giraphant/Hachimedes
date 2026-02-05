@@ -16,53 +16,64 @@ export interface PositionInfo {
 }
 
 /**
- * 从预言机读取价格
- * @param connection Solana 连接
- * @param oracleAddress 预言机地址
- * @returns 价格
+ * 从预言机读取价格（支持多种格式）
+ * Ported from Matsu's juplend.py _read_oracle_price / _parse_oracle_data
+ *
+ * Supported formats:
+ * - Oracle wrapper (disc 8bc283b38cb3e5f4): resolves inner oracle recursively
+ * - Pyth V2 (~3312 bytes): expo@20, price@208
+ * - jup3 oracle (~196 bytes, disc 87c75210f983b6f1): price@107, scale 1e12
+ * - Jupiter Lend oracle (~134 bytes): price@73, scale 1e8
  */
 async function readPriceFromOracle(
   connection: Connection,
   oracleAddress: string
 ): Promise<number | null> {
   try {
-    console.log('Reading price from oracle:', oracleAddress);
     const oracleAccount = await connection.getAccountInfo(new PublicKey(oracleAddress));
+    if (!oracleAccount) return null;
 
-    if (!oracleAccount) {
-      console.error('Oracle account not found:', oracleAddress);
+    const data = oracleAccount.data;
+
+    // Oracle wrapper (disc 8bc283b38cb3e5f4): resolve inner oracle
+    const ORACLE_WRAPPER_DISC = Buffer.from('8bc283b38cb3e5f4', 'hex');
+    if (data.length >= 46 && data.subarray(0, 8).equals(ORACLE_WRAPPER_DISC)) {
+      const innerOracleAddress = new PublicKey(data.subarray(14, 46)).toString();
+      console.log(`[oracle] Wrapper detected, resolving inner oracle: ${innerOracleAddress.slice(0, 8)}...`);
+      return readPriceFromOracle(connection, innerOracleAddress);
+    }
+
+    // Pyth V2 format (large account ~3312 bytes)
+    if (data.length > 1000) {
+      if (data.length >= 216) {
+        const expo = data.readInt32LE(20);
+        const rawPrice = data.readBigInt64LE(208);
+        const price = Number(rawPrice) * Math.pow(10, expo);
+        return price > 0 ? price : null;
+      }
       return null;
     }
 
-    console.log('Oracle account data length:', oracleAccount.data.length);
+    // jup3 oracle format (~196 bytes, disc 87c75210f983b6f1)
+    const JUP3_ORACLE_DISC = Buffer.from('87c75210f983b6f1', 'hex');
+    if (data.length >= 115 && data.subarray(0, 8).equals(JUP3_ORACLE_DISC)) {
+      const rawPrice = data.readBigUInt64LE(107);
+      const price = Number(rawPrice) / 1e12;
+      return price > 0 ? price : null;
+    }
 
-    // 预言机价格存储在 offset 73，使用 1e8 缩放因子
+    // Jupiter Lend oracle format (small account ~134 bytes)
     const PRICE_OFFSET = 73;
     const PRICE_SCALE = 1e8;
-
-    if (oracleAccount.data.length < PRICE_OFFSET + 8) {
-      console.error('Oracle data too short. Expected at least', PRICE_OFFSET + 8, 'bytes, got', oracleAccount.data.length);
-      return null;
+    if (data.length >= PRICE_OFFSET + 8) {
+      const rawPrice = data.readBigUInt64LE(PRICE_OFFSET);
+      const price = Number(rawPrice) / PRICE_SCALE;
+      return price > 0 && isFinite(price) ? price : null;
     }
 
-    const rawPrice = oracleAccount.data.readBigUInt64LE(PRICE_OFFSET);
-    const price = Number(rawPrice) / PRICE_SCALE;
-
-    console.log('Raw price value:', rawPrice.toString());
-    console.log('Oracle price:', price.toFixed(8));
-
-    // 验证价格合理性
-    if (price <= 0 || !isFinite(price)) {
-      console.error('Invalid price value:', price);
-      return null;
-    }
-
-    return price;
+    return null;
   } catch (error) {
     console.error('Error reading oracle price:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', error.message);
-    }
     return null;
   }
 }

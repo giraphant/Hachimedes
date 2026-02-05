@@ -16,7 +16,8 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { TOKENS } from '@/lib/constants';
-import { getVaultConfig, getAvailableVaults, DEFAULT_VAULT_ID } from '@/lib/vaults';
+import { getVaultConfig, getAvailableVaults, setDiscoveredVaults, DEFAULT_VAULT_ID } from '@/lib/vaults';
+import { discoverAllVaults, onVaultsRefreshed, DiscoveredVault } from '@/lib/vault-discovery';
 import { fetchPositionInfo, PositionInfo } from '@/lib/position';
 import { Loader2, TrendingUp, TrendingDown, Zap, ArrowRightLeft, RefreshCw, Info, Settings, SlidersHorizontal } from 'lucide-react';
 import { PositionManageDialog } from './PositionManageDialog';
@@ -49,8 +50,19 @@ export function FlashLoanInterface() {
   const [vaultId, setVaultId] = useState(DEFAULT_VAULT_ID);
   const vaultConfig = getVaultConfig(vaultId);
 
+  // Vault discovery
+  const [discoveredVaults, setDiscoveredVaultsState] = useState<DiscoveredVault[]>([]);
+  const [isDiscoveringVaults, setIsDiscoveringVaults] = useState(false);
+
   // 操作类型
-  const [operationType, setOperationType] = useState<'deleverageSwap' | 'leverageSwap'>('deleverageSwap');
+  const [operationType, setOperationType] = useState<'deleverageSwap' | 'leverageSwap' | 'rebalance'>('deleverageSwap');
+
+  // Rebalance state
+  const [rebalanceSourceVaultId, setRebalanceSourceVaultId] = useState<number | null>(null);
+  const [rebalanceTargetVaultId, setRebalanceTargetVaultId] = useState<number | null>(null);
+  const [rebalanceAmount, setRebalanceAmount] = useState('');
+  const [allPositions, setAllPositions] = useState<Record<number, PositionInfo | null>>({});
+  const [isLoadingAllPositions, setIsLoadingAllPositions] = useState(false);
 
   // 代币自动跟随 Vault 配置
   const depositToken = vaultConfig.collateralToken;
@@ -154,15 +166,12 @@ export function FlashLoanInterface() {
       const { PublicKey } = await import('@solana/web3.js');
       const { getAccount, getAssociatedTokenAddressSync } = await import('@solana/spl-token');
 
-      const collateralToken = TOKENS[vaultConfig.collateralToken];
-      const debtToken = TOKENS[vaultConfig.debtToken];
-
       const collateralAta = getAssociatedTokenAddressSync(
-        new PublicKey(collateralToken.mint),
+        new PublicKey(vaultConfig.collateralMint),
         publicKey
       );
       const debtAta = getAssociatedTokenAddressSync(
-        new PublicKey(debtToken.mint),
+        new PublicKey(vaultConfig.debtMint),
         publicKey
       );
 
@@ -173,10 +182,10 @@ export function FlashLoanInterface() {
 
       setWalletBalances({
         collateral: collateralAccount
-          ? Number(collateralAccount.amount) / Math.pow(10, collateralToken.decimals)
+          ? Number(collateralAccount.amount) / Math.pow(10, vaultConfig.collateralDecimals)
           : 0,
         debt: debtAccount
-          ? Number(debtAccount.amount) / Math.pow(10, debtToken.decimals)
+          ? Number(debtAccount.amount) / Math.pow(10, vaultConfig.debtDecimals)
           : 0,
       });
     } catch (error) {
@@ -284,6 +293,40 @@ export function FlashLoanInterface() {
     }
   }, [selectedPositionId]);
 
+  // Discover all vaults on mount (stale-while-revalidate)
+  useEffect(() => {
+    if (!connection) return;
+    let cancelled = false;
+
+    async function discover() {
+      setIsDiscoveringVaults(true);
+      try {
+        const vaults = await discoverAllVaults(connection);
+        if (!cancelled) {
+          setDiscoveredVaultsState(vaults);
+          setDiscoveredVaults(vaults);
+        }
+      } catch (e) {
+        console.error('[vault-discovery] Failed:', e);
+      } finally {
+        if (!cancelled) setIsDiscoveringVaults(false);
+      }
+    }
+
+    discover();
+
+    // Subscribe to background refresh (when localStorage cache was used,
+    // the on-chain scan runs in the background and notifies here)
+    const unsub = onVaultsRefreshed((freshVaults) => {
+      if (!cancelled) {
+        setDiscoveredVaultsState(freshVaults);
+        setDiscoveredVaults(freshVaults);
+      }
+    });
+
+    return () => { cancelled = true; unsub(); };
+  }, [connection]);
+
   // 计算最大可用金额
   const maxAmount = (() => {
     if (!positionInfo || !positionInfo.ltv) return 0;
@@ -357,9 +400,6 @@ export function FlashLoanInterface() {
     setIsLoading(true);
 
     try {
-      const depositTokenInfo = TOKENS[depositToken];
-      const borrowTokenInfo = TOKENS[borrowToken];
-
       let transaction: any;
       let transactions: any[] = [];
       let positionId: any;
@@ -367,10 +407,11 @@ export function FlashLoanInterface() {
 
       // 动态导入
       const { PublicKey } = await import('@solana/web3.js');
+      const collateralMintPk = new PublicKey(vaultConfig.collateralMint);
+      const debtMintPk = new PublicKey(vaultConfig.debtMint);
 
       if (operationType === 'deleverageSwap') {
         if (useJitoBundle) {
-          // Jito Bundle 模式：3 个独立交易
           toast({
             title: '正在构建 Jito Bundle (3 TX)',
             description: 'Withdraw → Swap → Repay',
@@ -378,27 +419,26 @@ export function FlashLoanInterface() {
 
           const { buildDeleverageJitoBundle } = await import('@/lib/deleverage-jito-bundle');
 
-          const withdrawAmountRaw = parseFloat(depositAmount);
-
           const result = await buildDeleverageJitoBundle({
-            collateralMint: new PublicKey(depositTokenInfo.mint), // JLP
-            debtMint: new PublicKey(borrowTokenInfo.mint),        // USDS
-            withdrawAmount: withdrawAmountRaw,
+            collateralMint: collateralMintPk,
+            debtMint: debtMintPk,
+            withdrawAmount: parseFloat(depositAmount),
             userPublicKey: publicKey,
-            vaultId: vaultId,
+            vaultId,
             positionId: selectedPositionId!,
             connection,
-            slippageBps: slippageBps,
+            slippageBps,
             preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
-            onlyDirectRoutes: onlyDirectRoutes,
-            maxAccounts: maxAccounts,
+            onlyDirectRoutes,
+            maxAccounts,
+            debtDecimals: vaultConfig.debtDecimals,
+            collateralDecimals: vaultConfig.collateralDecimals,
           });
 
           transactions = result.transactions;
           positionId = result.positionId;
           swapQuote = result.swapQuote;
         } else {
-          // Flash Loan 模式：单个交易
           toast({
             title: '正在构建 Flash Loan 交易',
             description: 'Flash Borrow → Swap → Repay → Flash Payback',
@@ -406,21 +446,21 @@ export function FlashLoanInterface() {
 
           const { buildDeleverageFlashLoanSwap } = await import('@/lib/deleverage-flashloan-swap');
 
-          const flashLoanAmountRaw = parseFloat(depositAmount);
-
           const result = await buildDeleverageFlashLoanSwap({
-            collateralMint: new PublicKey(depositTokenInfo.mint), // JLP
-            debtMint: new PublicKey(borrowTokenInfo.mint),        // USDS
-            flashLoanAmount: flashLoanAmountRaw,
+            collateralMint: collateralMintPk,
+            debtMint: debtMintPk,
+            flashLoanAmount: parseFloat(depositAmount),
             userPublicKey: publicKey,
-            vaultId: vaultId,
+            vaultId,
             positionId: selectedPositionId!,
             connection,
-            slippageBps: slippageBps,
+            slippageBps,
             preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
-            onlyDirectRoutes: onlyDirectRoutes,
-            maxAccounts: maxAccounts,
+            onlyDirectRoutes,
+            maxAccounts,
             useJitoBundle: false,
+            debtDecimals: vaultConfig.debtDecimals,
+            collateralDecimals: vaultConfig.collateralDecimals,
           });
 
           transaction = result.transaction;
@@ -429,7 +469,6 @@ export function FlashLoanInterface() {
         }
       } else if (operationType === 'leverageSwap') {
         if (useJitoBundle) {
-          // Jito Bundle 模式：3 个独立交易
           toast({
             title: '正在构建 Jito Bundle (3 TX)',
             description: 'Borrow → Swap → Deposit',
@@ -437,27 +476,26 @@ export function FlashLoanInterface() {
 
           const { buildLeverageJitoBundle } = await import('@/lib/leverage-jito-bundle');
 
-          const borrowAmountRaw = parseFloat(depositAmount);
-
           const result = await buildLeverageJitoBundle({
-            collateralMint: new PublicKey(depositTokenInfo.mint), // JLP
-            debtMint: new PublicKey(borrowTokenInfo.mint),        // USDS
-            borrowAmount: borrowAmountRaw,
+            collateralMint: collateralMintPk,
+            debtMint: debtMintPk,
+            borrowAmount: parseFloat(depositAmount),
             userPublicKey: publicKey,
-            vaultId: vaultId,
+            vaultId,
             positionId: selectedPositionId!,
             connection,
-            slippageBps: slippageBps,
+            slippageBps,
             preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
-            onlyDirectRoutes: onlyDirectRoutes,
-            maxAccounts: maxAccounts,
+            onlyDirectRoutes,
+            maxAccounts,
+            debtDecimals: vaultConfig.debtDecimals,
+            collateralDecimals: vaultConfig.collateralDecimals,
           });
 
           transactions = result.transactions;
           positionId = result.positionId;
           swapQuote = result.swapQuote;
         } else {
-          // Flash Loan 模式：单个交易
           toast({
             title: '正在构建 Flash Loan 交易',
             description: 'Flash Borrow → Swap → Deposit + Borrow → Flash Payback',
@@ -465,21 +503,21 @@ export function FlashLoanInterface() {
 
           const { buildLeverageFlashLoanSwap } = await import('@/lib/leverage-flashloan-swap');
 
-          const flashLoanAmountRaw = parseFloat(depositAmount);
-
           const result = await buildLeverageFlashLoanSwap({
-            collateralMint: new PublicKey(depositTokenInfo.mint), // JLP
-            debtMint: new PublicKey(borrowTokenInfo.mint),        // USDS
-            flashLoanAmount: flashLoanAmountRaw,
+            collateralMint: collateralMintPk,
+            debtMint: debtMintPk,
+            flashLoanAmount: parseFloat(depositAmount),
             userPublicKey: publicKey,
-            vaultId: vaultId,
+            vaultId,
             positionId: selectedPositionId!,
             connection,
-            slippageBps: slippageBps,
+            slippageBps,
             preferredDexes: selectedDexes.length > 0 ? selectedDexes : undefined,
-            onlyDirectRoutes: onlyDirectRoutes,
-            maxAccounts: maxAccounts,
+            onlyDirectRoutes,
+            maxAccounts,
             useJitoBundle: false,
+            debtDecimals: vaultConfig.debtDecimals,
+            collateralDecimals: vaultConfig.collateralDecimals,
           });
 
           transaction = result.transaction;
@@ -491,8 +529,10 @@ export function FlashLoanInterface() {
       // 签名交易 - 添加价格对比和滑点提醒
       let priceWarning = '';
       if (swapQuote && positionInfo) {
-        const inputAmount = parseInt(swapQuote.inputAmount) / 1e6;
-        const outputAmount = parseInt(swapQuote.outputAmount) / 1e6;
+        const debtScale = Math.pow(10, vaultConfig.debtDecimals);
+        const collateralScale = Math.pow(10, vaultConfig.collateralDecimals);
+        const inputAmount = parseInt(swapQuote.inputAmount) / (operationType === 'leverageSwap' ? debtScale : collateralScale);
+        const outputAmount = parseInt(swapQuote.outputAmount) / (operationType === 'leverageSwap' ? collateralScale : debtScale);
 
         // 交易价格（都统一为 USDS per JLP）
         const tradePrice = operationType === 'leverageSwap'
@@ -586,9 +626,8 @@ export function FlashLoanInterface() {
             {positionId && <p>Position ID: {positionId}</p>}
             {swapQuote && (
               <div>
-                {/* 注意：硬编码 1e6 是合理的，因为当前所有支持的代币（JLP/USDC/USDS/USDG）都是 6 位小数 */}
-                <p className="text-xs">输入: {(parseInt(swapQuote.inputAmount) / 1e6).toFixed(6)} {depositToken}</p>
-                <p className="text-xs">输出: {(parseInt(swapQuote.outputAmount) / 1e6).toFixed(6)} {borrowToken}</p>
+                <p className="text-xs">输入: {(parseInt(swapQuote.inputAmount) / (operationType === 'leverageSwap' ? Math.pow(10, vaultConfig.debtDecimals) : Math.pow(10, vaultConfig.collateralDecimals))).toFixed(6)} {operationType === 'leverageSwap' ? vaultConfig.debtToken : vaultConfig.collateralToken}</p>
+                <p className="text-xs">输出: {(parseInt(swapQuote.outputAmount) / (operationType === 'leverageSwap' ? Math.pow(10, vaultConfig.collateralDecimals) : Math.pow(10, vaultConfig.debtDecimals))).toFixed(6)} {operationType === 'leverageSwap' ? vaultConfig.collateralToken : vaultConfig.debtToken}</p>
                 {swapQuote.priceImpactPct && (
                   <p className="text-xs">价格影响: {swapQuote.priceImpactPct}%</p>
                 )}
@@ -645,6 +684,131 @@ export function FlashLoanInterface() {
       setIsLoading(false);
     }
   };
+
+  // Load positions for all same-collateral vaults (for rebalance)
+  const loadAllSameCollateralPositions = async (collateralMint: string) => {
+    if (!publicKey) return;
+    setIsLoadingAllPositions(true);
+    try {
+      const sameColVaults = discoveredVaults.filter(v => v.collateralMint === collateralMint);
+      const { findUserPositionsByNFT } = await import('@/lib/find-positions-nft');
+      const results: Record<number, PositionInfo | null> = {};
+
+      for (const vault of sameColVaults) {
+        try {
+          const positions = await findUserPositionsByNFT(connection, vault.id, publicKey, 100000);
+          if (positions.length > 0) {
+            const info = await fetchPositionInfo(connection, vault.id, positions[0], publicKey);
+            results[vault.id] = info;
+          }
+        } catch {
+          // skip failed vaults
+        }
+      }
+      setAllPositions(results);
+    } catch (e) {
+      console.error('Failed to load positions:', e);
+    } finally {
+      setIsLoadingAllPositions(false);
+    }
+  };
+
+  // When switching to rebalance tab, load all same-collateral positions
+  useEffect(() => {
+    if (operationType === 'rebalance' && publicKey && discoveredVaults.length > 0) {
+      loadAllSameCollateralPositions(vaultConfig.collateralMint);
+    }
+  }, [operationType, publicKey, vaultId, discoveredVaults.length]);
+
+  // Rebalance preview
+  const rebalancePreview = useMemo(() => {
+    if (!rebalanceSourceVaultId || !rebalanceTargetVaultId || !rebalanceAmount) return null;
+    const amount = parseFloat(rebalanceAmount);
+    if (isNaN(amount) || amount <= 0) return null;
+
+    const sourcePos = allPositions[rebalanceSourceVaultId];
+    const targetPos = allPositions[rebalanceTargetVaultId];
+    if (!sourcePos || !targetPos) return null;
+
+    const sourcePrice = sourcePos.oraclePrice ?? 0;
+    const targetPrice = targetPos.oraclePrice ?? 0;
+    if (!sourcePrice || !targetPrice) return null;
+
+    const sourceNewCol = sourcePos.collateralAmountUi - amount;
+    const targetNewCol = targetPos.collateralAmountUi + amount;
+
+    const sourceLtv = sourceNewCol > 0 && sourcePos.debtAmountUi > 0
+      ? (sourcePos.debtAmountUi / (sourceNewCol * sourcePrice)) * 100
+      : sourceNewCol <= 0 ? Infinity : 0;
+    const targetLtv = targetNewCol > 0 && targetPos.debtAmountUi > 0
+      ? (targetPos.debtAmountUi / (targetNewCol * targetPrice)) * 100
+      : 0;
+
+    return { sourceLtv, targetLtv, sourceNewCol, targetNewCol };
+  }, [allPositions, rebalanceSourceVaultId, rebalanceTargetVaultId, rebalanceAmount]);
+
+  // Rebalance handler
+  const handleRebalance = async () => {
+    if (!publicKey || !signTransaction || !rebalanceSourceVaultId || !rebalanceTargetVaultId) return;
+
+    setIsLoading(true);
+    try {
+      const amount = parseFloat(rebalanceAmount);
+      if (isNaN(amount) || amount <= 0) throw new Error('Invalid amount');
+
+      const sourcePos = allPositions[rebalanceSourceVaultId];
+      const targetPos = allPositions[rebalanceTargetVaultId];
+      if (!sourcePos || !targetPos) throw new Error('Position not found');
+
+      const sourceConfig = getVaultConfig(rebalanceSourceVaultId);
+
+      const { buildRebalanceTransaction } = await import('@/lib/rebalance');
+      const { sendJitoMultiTxBundle } = await import('@/lib/jito-bundle');
+
+      const result = await buildRebalanceTransaction({
+        sourceVaultId: rebalanceSourceVaultId,
+        sourcePositionId: sourcePos.positionId,
+        targetVaultId: rebalanceTargetVaultId,
+        targetPositionId: targetPos.positionId,
+        collateralAmount: amount,
+        collateralDecimals: sourceConfig.collateralDecimals,
+        userPublicKey: publicKey,
+        connection,
+      });
+
+      if (result.mode === 'single') {
+        toast({ title: '请在钱包中确认交易' });
+        const signed = await signTransaction(result.transactions[0]);
+        const sig = await connection.sendTransaction(signed, { skipPreflight: false, preflightCommitment: 'confirmed' });
+        await connection.confirmTransaction(sig, 'confirmed');
+        toast({ title: 'Rebalance 成功', description: `Tx: ${sig.slice(0, 8)}...` });
+      } else {
+        toast({ title: '请签名 2 个交易（Jito Bundle）' });
+        const signed = [];
+        for (const tx of result.transactions) {
+          signed.push(await signTransaction(tx));
+        }
+        const bundleId = await sendJitoMultiTxBundle(connection, signed);
+        toast({ title: 'Rebalance Bundle 已发送', description: `Bundle: ${bundleId.slice(0, 8)}...` });
+      }
+
+      setRebalanceAmount('');
+      // Reload positions
+      loadAllSameCollateralPositions(vaultConfig.collateralMint);
+      loadPositionInfo();
+    } catch (e: any) {
+      toast({ title: 'Rebalance 失败', description: e.message, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Available vaults for rebalance (same collateral, user has position)
+  const rebalanceVaults = useMemo(() => {
+    return Object.entries(allPositions)
+      .filter(([, pos]) => pos !== null)
+      .map(([vid, pos]) => ({ vaultId: parseInt(vid), position: pos! }));
+  }, [allPositions]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
@@ -721,12 +885,19 @@ export function FlashLoanInterface() {
                         <SelectTrigger className="w-auto bg-slate-900/70 border-slate-700 text-sm">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                          {getAvailableVaults().map((vault) => (
-                            <SelectItem key={vault.id} value={vault.id.toString()}>
-                              {vault.name}
+                        <SelectContent className="max-h-64">
+                          {isDiscoveringVaults && getAvailableVaults().length <= 3 ? (
+                            <SelectItem value={vaultId.toString()} disabled>
+                              <Loader2 className="h-3 w-3 animate-spin inline mr-1" />
+                              Discovering vaults...
                             </SelectItem>
-                          ))}
+                          ) : (
+                            getAvailableVaults().map((vault) => (
+                              <SelectItem key={vault.id} value={vault.id.toString()}>
+                                {vault.name} (#{vault.id})
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
 
@@ -863,7 +1034,7 @@ export function FlashLoanInterface() {
                                 </>
                               )}
                             </div>
-                            <div className="text-xs text-slate-400">{TOKENS[vaultConfig.collateralToken].symbol}</div>
+                            <div className="text-xs text-slate-400">{vaultConfig.collateralToken}</div>
                           </div>
                         </div>
 
@@ -888,7 +1059,7 @@ export function FlashLoanInterface() {
                                 </>
                               )}
                             </div>
-                            <div className="text-xs text-slate-400">{TOKENS[vaultConfig.debtToken].symbol}</div>
+                            <div className="text-xs text-slate-400">{vaultConfig.debtToken}</div>
                           </div>
                         </div>
                       </div>
@@ -924,7 +1095,7 @@ export function FlashLoanInterface() {
               {/* 2️⃣ Operation Type Selector - 选择要做什么 */}
               <div className="space-y-3">
                 <Label className="text-slate-300 text-sm">选择操作</Label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <button
                     type="button"
                     onClick={() => setOperationType('deleverageSwap')}
@@ -936,7 +1107,7 @@ export function FlashLoanInterface() {
                   >
                     <div className="flex items-center justify-center gap-2 mb-1">
                       <TrendingDown className={`h-5 w-5 flex-shrink-0 ${operationType === 'deleverageSwap' ? 'text-purple-500' : 'text-slate-400'}`} />
-                      <span className={`font-semibold ${operationType === 'deleverageSwap' ? 'text-purple-500' : 'text-slate-400'}`}>
+                      <span className={`font-semibold text-sm ${operationType === 'deleverageSwap' ? 'text-purple-500' : 'text-slate-400'}`}>
                         去杠杆
                       </span>
                     </div>
@@ -954,15 +1125,153 @@ export function FlashLoanInterface() {
                   >
                     <div className="flex items-center justify-center gap-2 mb-1">
                       <TrendingUp className={`h-5 w-5 flex-shrink-0 ${operationType === 'leverageSwap' ? 'text-cyan-500' : 'text-slate-400'}`} />
-                      <span className={`font-semibold ${operationType === 'leverageSwap' ? 'text-cyan-500' : 'text-slate-400'}`}>
+                      <span className={`font-semibold text-sm ${operationType === 'leverageSwap' ? 'text-cyan-500' : 'text-slate-400'}`}>
                         加杠杆
                       </span>
                     </div>
                     <p className="text-xs text-slate-500">提高 LTV</p>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setOperationType('rebalance')}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      operationType === 'rebalance'
+                        ? 'border-emerald-500 bg-emerald-500/10'
+                        : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <ArrowRightLeft className={`h-5 w-5 flex-shrink-0 ${operationType === 'rebalance' ? 'text-emerald-500' : 'text-slate-400'}`} />
+                      <span className={`font-semibold text-sm ${operationType === 'rebalance' ? 'text-emerald-500' : 'text-slate-400'}`}>
+                        平衡
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500">跨池平衡</p>
+                  </button>
                 </div>
               </div>
 
+              {operationType === 'rebalance' ? (
+              /* Rebalance Panel */
+              <div className="space-y-4 p-4 rounded-lg bg-slate-950/50 border border-slate-800">
+                {isLoadingAllPositions ? (
+                  <div className="flex items-center justify-center gap-2 text-slate-400 py-4">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">正在搜索同抵押品池子的仓位...</span>
+                  </div>
+                ) : rebalanceVaults.length < 2 ? (
+                  <div className="text-center py-4">
+                    <p className="text-slate-400 text-sm">需要在至少 2 个同抵押品池子中有仓位才能 Rebalance</p>
+                    <p className="text-xs text-slate-500 mt-1">找到 {rebalanceVaults.length} 个有仓位的池子（{vaultConfig.collateralToken} 抵押品）</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Source vault selector */}
+                    <div className="space-y-2">
+                      <Label className="text-slate-300 text-sm">转出池（健康的）</Label>
+                      <Select
+                        value={rebalanceSourceVaultId?.toString() ?? ''}
+                        onValueChange={(val) => setRebalanceSourceVaultId(parseInt(val))}
+                      >
+                        <SelectTrigger className="bg-slate-900/70 border-slate-700 text-sm">
+                          <SelectValue placeholder="选择转出池" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {rebalanceVaults
+                            .filter(v => v.vaultId !== rebalanceTargetVaultId)
+                            .map(({ vaultId: vid, position: pos }) => {
+                              const vc = getVaultConfig(vid);
+                              return (
+                                <SelectItem key={vid} value={vid.toString()}>
+                                  {vc.name} (#{vid}) — LTV: {pos.ltv?.toFixed(1) ?? '?'}% — 抵押: {pos.collateralAmountUi.toFixed(2)}
+                                </SelectItem>
+                              );
+                            })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Target vault selector */}
+                    <div className="space-y-2">
+                      <Label className="text-slate-300 text-sm">转入池（需要补充的）</Label>
+                      <Select
+                        value={rebalanceTargetVaultId?.toString() ?? ''}
+                        onValueChange={(val) => setRebalanceTargetVaultId(parseInt(val))}
+                      >
+                        <SelectTrigger className="bg-slate-900/70 border-slate-700 text-sm">
+                          <SelectValue placeholder="选择转入池" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {rebalanceVaults
+                            .filter(v => v.vaultId !== rebalanceSourceVaultId)
+                            .map(({ vaultId: vid, position: pos }) => {
+                              const vc = getVaultConfig(vid);
+                              return (
+                                <SelectItem key={vid} value={vid.toString()}>
+                                  {vc.name} (#{vid}) — LTV: {pos.ltv?.toFixed(1) ?? '?'}% — 抵押: {pos.collateralAmountUi.toFixed(2)}
+                                </SelectItem>
+                              );
+                            })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Amount */}
+                    <div className="space-y-2">
+                      <Label className="text-slate-300 text-sm">转移数量 ({vaultConfig.collateralToken})</Label>
+                      <Input
+                        type="number"
+                        placeholder="0.00"
+                        value={rebalanceAmount}
+                        onChange={(e) => setRebalanceAmount(e.target.value)}
+                        className="bg-slate-900 border-slate-700 text-white"
+                        step="0.01"
+                      />
+                    </div>
+
+                    {/* Preview */}
+                    {rebalancePreview && (
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="p-3 rounded-lg bg-slate-900/30 border border-slate-700/40">
+                          <div className="text-xs text-slate-500 mb-1">转出池 LTV</div>
+                          <div className={`font-bold ${rebalancePreview.sourceLtv > 85 ? 'text-red-400' : rebalancePreview.sourceLtv > 75 ? 'text-yellow-400' : 'text-green-400'}`}>
+                            {allPositions[rebalanceSourceVaultId!]?.ltv?.toFixed(1) ?? '?'}% → {rebalancePreview.sourceLtv === Infinity ? '∞' : rebalancePreview.sourceLtv.toFixed(1)}%
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-900/30 border border-slate-700/40">
+                          <div className="text-xs text-slate-500 mb-1">转入池 LTV</div>
+                          <div className={`font-bold ${rebalancePreview.targetLtv > 85 ? 'text-red-400' : rebalancePreview.targetLtv > 75 ? 'text-yellow-400' : 'text-green-400'}`}>
+                            {allPositions[rebalanceTargetVaultId!]?.ltv?.toFixed(1) ?? '?'}% → {rebalancePreview.targetLtv.toFixed(1)}%
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Execute */}
+                    <Button
+                      onClick={handleRebalance}
+                      disabled={!publicKey || isLoading || !rebalanceSourceVaultId || !rebalanceTargetVaultId || !rebalanceAmount}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                      size="lg"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          执行中...
+                        </>
+                      ) : (
+                        <>
+                          <ArrowRightLeft className="mr-2 h-4 w-4" />
+                          执行 Rebalance（跨池平衡）
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+              ) : (
+              <>
               {/* 3️⃣ Amount Input - 输入金额 */}
               <div className="space-y-4 p-4 rounded-lg bg-slate-950/50 border border-slate-800">
                 <div className="space-y-3">
@@ -1281,6 +1590,8 @@ export function FlashLoanInterface() {
                     <li>交易不可逆，请仔细检查参数</li>
                   </ul>
                 </div>
+              )}
+              </>
               )}
                 </CardContent>
               </Card>

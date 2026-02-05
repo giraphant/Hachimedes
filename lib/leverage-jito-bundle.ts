@@ -17,6 +17,8 @@ export interface LeverageJitoBundleParams {
   preferredDexes?: string[];
   onlyDirectRoutes?: boolean;
   maxAccounts?: number; // Jupiter maxAccounts 限制，默认 32
+  debtDecimals?: number;      // Debt token decimals, default 6
+  collateralDecimals?: number; // Collateral token decimals, default 6
 }
 
 /**
@@ -45,17 +47,22 @@ export async function buildLeverageJitoBundle(params: LeverageJitoBundleParams) 
     preferredDexes,
     onlyDirectRoutes = false,
     maxAccounts = 32, // 默认 32 账户
+    debtDecimals = 6,
+    collateralDecimals = 6,
   } = params;
+
+  const debtScale = Math.pow(10, debtDecimals);
+  const collateralScale = Math.pow(10, collateralDecimals);
 
   console.log('\n════════════════════════════════════════');
   console.log('  Leverage with Jito Bundle (3 TXs)');
   console.log('════════════════════════════════════════');
-  console.log('Borrow Amount:', borrowAmount, 'USDS');
+  console.log('Borrow Amount:', borrowAmount);
   console.log('Vault ID:', vaultId);
   console.log('Position ID:', positionId);
 
   try {
-    const borrowAmountRaw = Math.floor(borrowAmount * 1e6);
+    const borrowAmountRaw = Math.floor(borrowAmount * debtScale);
 
     // ============================================================
     // TX1: Borrow USDS
@@ -113,8 +120,8 @@ export async function buildLeverageJitoBundle(params: LeverageJitoBundleParams) 
     }
 
     console.log('Swap quote:');
-    console.log('  Input:', parseInt(quoteResponse.inAmount) / 1e6, 'USDS');
-    console.log('  Output:', parseInt(quoteResponse.outAmount) / 1e6, 'JLP');
+    console.log('  Input:', parseInt(quoteResponse.inAmount) / debtScale);
+    console.log('  Output:', parseInt(quoteResponse.outAmount) / collateralScale);
 
     const swapResult = await jupiterApi.swapInstructionsPost({
       swapRequest: {
