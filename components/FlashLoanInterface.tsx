@@ -908,33 +908,14 @@ export function FlashLoanInterface() {
       });
 
       if (result.mode === 'single') {
-        toast({ title: '请在钱包中确认交易' });
+        // Single atomic transaction (withdraw + deposit in one TX)
+        toast({ title: '请在钱包中确认交易（原子操作）' });
         const signed = await signTransaction(result.transactions[0]);
         const sig = await connection.sendTransaction(signed, { skipPreflight: false, preflightCommitment: 'confirmed' });
         await connection.confirmTransaction(sig, 'confirmed');
-        toast({ title: 'Rebalance 成功', description: `Tx: ${sig.slice(0, 8)}...` });
-      } else if (result.mode === 'sequential') {
-        // Sequential: withdraw first, wait for confirmation, then deposit
-        toast({ title: '第 1/2 步：请确认取款交易' });
-        const signedWithdraw = await signTransaction(result.transactions[0]);
-        const withdrawSig = await connection.sendTransaction(signedWithdraw, { skipPreflight: false, preflightCommitment: 'confirmed' });
-        toast({ title: '取款交易已发送，等待确认...', description: `Tx: ${withdrawSig.slice(0, 8)}...` });
-        await connection.confirmTransaction(withdrawSig, 'confirmed');
-        toast({ title: '取款成功！' });
-
-        // Now deposit - need fresh blockhash
-        toast({ title: '第 2/2 步：请确认存款交易' });
-        const freshBlockhash = await connection.getLatestBlockhash('finalized');
-        const depositTx = result.transactions[1];
-        depositTx.message.recentBlockhash = freshBlockhash.blockhash;
-
-        const signedDeposit = await signTransaction(depositTx);
-        const depositSig = await connection.sendTransaction(signedDeposit, { skipPreflight: false, preflightCommitment: 'confirmed' });
-        toast({ title: '存款交易已发送，等待确认...', description: `Tx: ${depositSig.slice(0, 8)}...` });
-        await connection.confirmTransaction(depositSig, 'confirmed');
-        toast({ title: 'Rebalance 完成！', description: '抵押品已转移到目标池' });
+        toast({ title: 'Rebalance 成功！', description: `单笔原子交易: ${sig.slice(0, 8)}...` });
       } else {
-        // Jito bundle
+        // Jito bundle (2 TXs when single TX is too large)
         toast({ title: '请签名 2 个交易（Jito Bundle）' });
         const signed = [];
         for (const tx of result.transactions) {

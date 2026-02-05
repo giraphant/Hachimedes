@@ -15,8 +15,10 @@ export interface RebalanceParams {
 
 export interface RebalanceResult {
   transactions: VersionedTransaction[];  // 1 or 2 TXs
-  mode: 'single' | 'jito-bundle' | 'sequential';  // sequential = withdraw first, then deposit
+  mode: 'single' | 'jito-bundle';
 }
+
+const MAX_TX_SIZE = 1232; // Solana max transaction size
 
 /**
  * Build rebalance transaction(s): withdraw from source vault, deposit into target vault.
@@ -42,7 +44,7 @@ export async function buildRebalanceTransaction(params: RebalanceParams): Promis
   console.log('════════════════════════════════════════');
   console.log(`Source: vault ${sourceVaultId}, position ${sourcePositionId}`);
   console.log(`Target: vault ${targetVaultId}, position ${targetPositionId}`);
-  console.log(`Amount: ${collateralAmount} (raw: ${amountRaw})  [scale: ${scale}]`);
+  console.log(`Amount: ${collateralAmount} (raw: ${amountRaw})  [scale: ${scale}, decimals: ${collateralDecimals}]`);
 
   // Step 1: Build withdraw instruction (source vault)
   console.log('\n[Step 1] Building withdraw instruction from source vault...');
@@ -86,7 +88,7 @@ export async function buildRebalanceTransaction(params: RebalanceParams): Promis
     throw new Error(`Failed to build deposit to target vault: ${err}`);
   }
 
-  // Collect all address lookup tables
+  // Collect all address lookup tables (deduplicated)
   const seenKeys = new Set<string>();
   const allLuts: any[] = [];
   for (const lut of [...(withdrawResult.addressLookupTableAccounts ?? []), ...(depositResult.addressLookupTableAccounts ?? [])]) {
@@ -99,9 +101,50 @@ export async function buildRebalanceTransaction(params: RebalanceParams): Promis
 
   const latestBlockhash = await connection.getLatestBlockhash('finalized');
 
-  // Build two separate transactions for sequential execution
-  // (SDK doesn't support atomic withdraw+deposit in single TX when wallet has no tokens)
-  console.log('\n[Step 3] Building sequential transactions (withdraw → deposit)...');
+  // Step 3: Try to build a single combined transaction
+  console.log('\n[Step 3] Trying single atomic transaction (withdraw + deposit)...');
+  const combinedIxs = [...withdrawResult.ixs, ...depositResult.ixs];
+
+  const singleTxMessage = new TransactionMessage({
+    payerKey: userPublicKey,
+    recentBlockhash: latestBlockhash.blockhash,
+    instructions: combinedIxs,
+  }).compileToV0Message(allLuts);
+
+  const singleTx = new VersionedTransaction(singleTxMessage);
+  const singleTxSize = singleTx.serialize().length;
+
+  console.log(`  Combined TX size: ${singleTxSize} bytes (max: ${MAX_TX_SIZE})`);
+
+  if (singleTxSize <= MAX_TX_SIZE) {
+    // Single TX fits! Simulate it
+    console.log('\n[Step 4] Simulating single atomic transaction...');
+    try {
+      const simResult = await connection.simulateTransaction(singleTx, {
+        sigVerify: false,
+        replaceRecentBlockhash: true,
+      });
+
+      if (simResult.value.err) {
+        console.error('Single TX simulation failed:', simResult.value.err);
+        console.error('Logs:', simResult.value.logs);
+        const logs = simResult.value.logs || [];
+        const errorLog = logs.find(l => l.includes('Error:') || l.includes('failed:'));
+        throw new Error(`Simulation failed: ${errorLog || JSON.stringify(simResult.value.err)}`);
+      }
+      console.log('  ✓ Single TX simulation passed');
+      console.log(`\n✅ Returning single atomic transaction (${singleTxSize} bytes)`);
+      return { transactions: [singleTx], mode: 'single' };
+    } catch (simErr: any) {
+      console.error('  ✗ Single TX simulation error:', simErr.message);
+      // Fall through to try Jito bundle
+    }
+  } else {
+    console.log(`  ✗ TX too large (${singleTxSize} > ${MAX_TX_SIZE}), will use Jito bundle`);
+  }
+
+  // Step 4: Build two separate transactions for Jito bundle
+  console.log('\n[Step 4] Building Jito bundle (2 TXs)...');
 
   const tx1Message = new TransactionMessage({
     payerKey: userPublicKey,
@@ -119,7 +162,7 @@ export async function buildRebalanceTransaction(params: RebalanceParams): Promis
   const tx2 = new VersionedTransaction(tx2Message);
 
   // Simulate withdraw transaction
-  console.log('\n[Step 4] Simulating withdraw transaction...');
+  console.log('\n[Step 5] Simulating withdraw transaction...');
   try {
     const simResult = await connection.simulateTransaction(tx1, {
       sigVerify: false,
@@ -141,9 +184,9 @@ export async function buildRebalanceTransaction(params: RebalanceParams): Promis
     throw new Error(`Withdraw simulation error: ${simErr.message || simErr}`);
   }
 
-  console.log('Sequential transactions: withdraw first, then deposit');
+  console.log(`\n✅ Returning Jito bundle (2 TXs)`);
   console.log(`  TX1 (withdraw): ${tx1.serialize().length} bytes`);
   console.log(`  TX2 (deposit): ${tx2.serialize().length} bytes`);
 
-  return { transactions: [tx1, tx2], mode: 'sequential' };
+  return { transactions: [tx1, tx2], mode: 'jito-bundle' };
 }

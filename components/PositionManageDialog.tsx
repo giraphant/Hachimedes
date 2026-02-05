@@ -219,7 +219,15 @@ export function PositionManageDialog({
       const { TransactionMessage, VersionedTransaction } = await import('@solana/web3.js');
 
       const amountNum = parseFloat(amount);
-      const amountRaw = Math.floor(amountNum * 1e9); // Jupiter Lend 使用 9 decimals
+      const vc = getVaultConfig(vaultId);
+
+      // 使用代币原生精度，而不是固定的 1e9
+      // JLP = 6 decimals, SOL = 9 decimals, etc.
+      const isCollateralOp = operationType === 'deposit' || operationType === 'withdraw';
+      const decimals = isCollateralOp ? vc.collateralDecimals : vc.debtDecimals;
+      const amountRaw = Math.floor(amountNum * Math.pow(10, decimals));
+
+      console.log(`[PositionManage] ${operationType}: ${amountNum} UI → ${amountRaw} raw (${decimals} decimals)`);
 
       // 根据操作类型设置 colAmount 和 debtAmount
       let colAmount = new BN(0);
