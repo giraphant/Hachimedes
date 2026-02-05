@@ -89,7 +89,7 @@ export function FlashLoanInterface() {
 
       for (const vault of discoveredVaults) {
         try {
-          const positionIds = await findUserPositionsByNFT(connection, vault.id, publicKey, 100000);
+          const positionIds = await findUserPositionsByNFT(connection, vault.id, publicKey);
           for (const pid of positionIds) {
             const info = await fetchPositionInfo(connection, vault.id, pid, publicKey);
             if (info) {

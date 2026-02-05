@@ -21,7 +21,7 @@ export async function findUserPositionsByNFT(
   connection: Connection,
   vaultId: number,
   userPublicKey: PublicKey,
-  maxPositionsToCheck: number = 100000, // 提高到 10 万
+  maxPositionsToCheck: number = 1000,
   onProgress?: (current: number, total: number) => void
 ): Promise<number[]> {
   console.log(`Searching for position NFT in vault ${vaultId} for user ${userPublicKey.toString().slice(0, 8)}...`);
@@ -52,13 +52,11 @@ export async function findUserPositionsByNFT(
 
     const userPositions: number[] = [];
 
-    // Step 2: 分批搜索策略
-    // 批次定义：优先检查常用范围，然后扩展到更大范围
+    // Step 2: 分层搜索策略
+    // 先查 0-100（大部分 position 都在这个范围），查不到再扩到 100-1000
     const batches = [
-      { start: 0, end: 1000, name: '0-1K' },         // 大多数用户在这个范围
-      { start: 1000, end: 5000, name: '1K-5K' },     // 四位数范围
-      { start: 5000, end: 10000, name: '5K-10K' },   // 高四位数
-      { start: 10000, end: maxPositionsToCheck, name: `10K-${maxPositionsToCheck/1000}K` }, // 五位数+
+      { start: 0, end: 100, name: '0-100' },
+      { start: 100, end: Math.min(1000, maxPositionsToCheck), name: '100-1K' },
     ];
 
     for (const batch of batches) {

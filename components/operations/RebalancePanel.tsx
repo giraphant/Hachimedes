@@ -89,7 +89,7 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
 
       for (const vault of sameColVaults) {
         try {
-          const positions = await findUserPositionsByNFT(connection, vault.id, publicKey, 100000);
+          const positions = await findUserPositionsByNFT(connection, vault.id, publicKey);
           if (positions.length > 0) {
             const info = await fetchPositionInfo(connection, vault.id, positions[0], publicKey);
             results[vault.id] = info;
