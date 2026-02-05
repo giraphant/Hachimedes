@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Loader2, RefreshCw, ChevronDown } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +26,7 @@ import { PositionCard } from './PositionCard';
 import { PositionFilters, SortKey } from './PositionFilters';
 import { PositionInfo } from '@/lib/position';
 import { VaultConfig, getAvailableVaults } from '@/lib/vaults';
+import { formatCacheAge } from '@/lib/position-cache';
 import { cn } from '@/lib/utils';
 
 export interface PositionEntry {
@@ -46,6 +47,8 @@ interface PositionListProps {
   previewLtv?: number;
   previewCollateral?: number;
   previewDebt?: number;
+  lastScanned?: number | null;
+  isBackgroundScanning?: boolean;
 }
 
 function LtvBadge({ ltv, maxLtv }: { ltv: number; maxLtv: number }) {
@@ -75,6 +78,8 @@ export function PositionList({
   previewLtv,
   previewCollateral,
   previewDebt,
+  lastScanned,
+  isBackgroundScanning,
 }: PositionListProps) {
   const [filterCollateral, setFilterCollateral] = useState('');
   const [filterDebt, setFilterDebt] = useState('');
@@ -147,16 +152,30 @@ export function PositionList({
             {isFinding ? (
               <>
                 <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                查找中
+                扫描中
               </>
             ) : (
               <>
                 <RefreshCw className="mr-1 h-3 w-3" />
-                自动查找
+                重新扫描
               </>
             )}
           </Button>
         </div>
+        {/* Cache status */}
+        {(lastScanned || isBackgroundScanning) && (
+          <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+            {isBackgroundScanning && (
+              <span className="flex items-center gap-1 text-blue-400">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                后台扫描中
+              </span>
+            )}
+            {lastScanned && (
+              <span>上次扫描: {formatCacheAge(lastScanned)}</span>
+            )}
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {positions.length > 0 && (

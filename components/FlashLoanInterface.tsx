@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletButton } from '@/components/WalletButton';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,14 @@ import { useToast } from '@/hooks/use-toast';
 import { getVaultConfig, setDiscoveredVaults, DEFAULT_VAULT_ID } from '@/lib/vaults';
 import { discoverAllVaults, onVaultsRefreshed, DiscoveredVault } from '@/lib/vault-discovery';
 import { fetchPositionInfo, PositionInfo } from '@/lib/position';
+import {
+  loadPositionCache,
+  savePositionCache,
+  mergePositionCache,
+  removeFromCache,
+  formatCacheAge,
+  CachedPosition,
+} from '@/lib/position-cache';
 import { PositionList } from './position/PositionList';
 import { OperationTabs } from './operations/OperationTabs';
 import { PositionManageDialog } from './PositionManageDialog';
@@ -30,6 +38,8 @@ export function FlashLoanInterface() {
   const [positions, setPositions] = useState<PositionEntry[]>([]);
   const [isLoadingPositions, setIsLoadingPositions] = useState(false);
   const [isFinding, setIsFinding] = useState(false);
+  const [isBackgroundScanning, setIsBackgroundScanning] = useState(false);
+  const [lastScanned, setLastScanned] = useState<number | null>(null);
 
   // Selected position
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -48,6 +58,9 @@ export function FlashLoanInterface() {
 
   // Preview from operation panels
   const [preview, setPreview] = useState<{ ltv?: number; collateral?: number; debt?: number } | null>(null);
+
+  // Track if background scan already ran this session
+  const bgScanDone = useRef(false);
 
   // Discover vaults on mount
   useEffect(() => {
@@ -78,19 +91,125 @@ export function FlashLoanInterface() {
     return () => { cancelled = true; unsub(); };
   }, [connection]);
 
-  // Find all user positions across discovered vaults
+  // Layer 1: Load from cache (instant) — uses cached position IDs to fetch live data
+  const loadFromCache = useCallback(async () => {
+    if (!publicKey) return false;
+    const wallet = publicKey.toString();
+    const cache = loadPositionCache(wallet);
+    if (!cache || cache.positions.length === 0) return false;
+
+    setIsLoadingPositions(true);
+    setLastScanned(cache.lastScanned);
+
+    try {
+      const entries: PositionEntry[] = [];
+
+      await Promise.all(
+        cache.positions.map(async (cached) => {
+          try {
+            const info = await fetchPositionInfo(connection, cached.vaultId, cached.positionId, publicKey);
+            if (info && (info.collateralAmountUi > 0 || info.debtAmountUi > 0)) {
+              entries.push({ position: info, vaultConfig: getVaultConfig(cached.vaultId) });
+            } else if (info && info.collateralAmountUi === 0 && info.debtAmountUi === 0) {
+              // Position is empty, remove from cache
+              removeFromCache(wallet, cached.vaultId, cached.positionId);
+            }
+          } catch {
+            // Position might no longer exist, keep in cache for now
+          }
+        })
+      );
+
+      setPositions(entries);
+      if (entries.length > 0) {
+        setSelectedKey((prev) => prev ?? `${entries[0].vaultConfig.id}-${entries[0].position.positionId}`);
+      }
+      return entries.length > 0;
+    } catch {
+      return false;
+    } finally {
+      setIsLoadingPositions(false);
+    }
+  }, [publicKey, connection]);
+
+  // Layer 2: Background full scan — discovers new positions, updates cache
+  const backgroundScan = useCallback(async () => {
+    if (!publicKey || discoveredVaults.length === 0) return;
+
+    setIsBackgroundScanning(true);
+    try {
+      const { findUserPositionsByNFT } = await import('@/lib/find-positions-nft');
+      const wallet = publicKey.toString();
+      const foundCached: CachedPosition[] = [];
+      const newEntries: PositionEntry[] = [];
+
+      for (const vault of discoveredVaults) {
+        try {
+          const positionIds = await findUserPositionsByNFT(connection, vault.id, publicKey);
+          for (const pid of positionIds) {
+            foundCached.push({ vaultId: vault.id, positionId: pid });
+            // Check if we already have this position loaded
+            const exists = positions.some(
+              (p) => p.vaultConfig.id === vault.id && p.position.positionId === pid
+            );
+            if (!exists) {
+              const info = await fetchPositionInfo(connection, vault.id, pid, publicKey);
+              if (info && (info.collateralAmountUi > 0 || info.debtAmountUi > 0)) {
+                newEntries.push({ position: info, vaultConfig: getVaultConfig(vault.id) });
+              }
+            }
+          }
+        } catch {
+          // skip failed vaults
+        }
+      }
+
+      // Update cache with all found positions
+      if (foundCached.length > 0) {
+        mergePositionCache(wallet, foundCached);
+      }
+      setLastScanned(Date.now());
+
+      // Append any newly discovered positions
+      if (newEntries.length > 0) {
+        setPositions((prev) => {
+          const merged = [...prev];
+          for (const ne of newEntries) {
+            const key = `${ne.vaultConfig.id}-${ne.position.positionId}`;
+            if (!merged.some((p) => `${p.vaultConfig.id}-${p.position.positionId}` === key)) {
+              merged.push(ne);
+            }
+          }
+          return merged;
+        });
+        toast({
+          title: '发现新仓位',
+          description: `后台扫描发现 ${newEntries.length} 个新仓位`,
+        });
+      }
+    } catch (error) {
+      console.error('Background scan failed:', error);
+    } finally {
+      setIsBackgroundScanning(false);
+    }
+  }, [publicKey, discoveredVaults, connection, positions, toast]);
+
+  // Layer 3: Manual full scan — user-initiated, force refresh everything
   const findPositions = useCallback(async () => {
     if (!publicKey || discoveredVaults.length === 0) return;
 
     setIsFinding(true);
     try {
       const { findUserPositionsByNFT } = await import('@/lib/find-positions-nft');
+      const wallet = publicKey.toString();
       const entries: PositionEntry[] = [];
+      const foundCached: CachedPosition[] = [];
 
       for (const vault of discoveredVaults) {
         try {
           const positionIds = await findUserPositionsByNFT(connection, vault.id, publicKey);
           for (const pid of positionIds) {
+            foundCached.push({ vaultId: vault.id, positionId: pid });
             const info = await fetchPositionInfo(connection, vault.id, pid, publicKey);
             if (info && (info.collateralAmountUi > 0 || info.debtAmountUi > 0)) {
               entries.push({ position: info, vaultConfig: getVaultConfig(vault.id) });
@@ -101,15 +220,19 @@ export function FlashLoanInterface() {
         }
       }
 
+      // Save full scan results to cache
+      savePositionCache(wallet, foundCached);
+      setLastScanned(Date.now());
+
       setPositions(entries);
       if (entries.length > 0 && !selectedKey) {
         setSelectedKey(`${entries[0].vaultConfig.id}-${entries[0].position.positionId}`);
       }
 
       toast({
-        title: entries.length > 0 ? '找到仓位' : '未找到仓位',
+        title: entries.length > 0 ? '扫描完成' : '未找到仓位',
         description: entries.length > 0
-          ? `找到 ${entries.length} 个仓位`
+          ? `找到 ${entries.length} 个仓位，已更新缓存`
           : '请前往 JUP LEND 创建一个仓位',
       });
     } catch (error) {
@@ -134,6 +257,8 @@ export function FlashLoanInterface() {
           return [...without, { position: info, vaultConfig: vc }];
         });
         setSelectedKey(key);
+        // Also save to cache
+        mergePositionCache(publicKey.toString(), [{ vaultId, positionId }]);
       }
     } catch (error) {
       toast({ title: '加载失败', description: error instanceof Error ? error.message : '未知错误', variant: 'destructive' });
@@ -159,11 +284,33 @@ export function FlashLoanInterface() {
     } catch { /* ignore */ }
   }, [selectedEntry, publicKey, connection]);
 
-  // Auto-find positions when wallet connects
+  // On wallet connect: Layer 1 (cache) → Layer 2 (background scan)
   useEffect(() => {
-    if (publicKey && discoveredVaults.length > 0 && positions.length === 0) {
-      findPositions();
+    if (!publicKey || discoveredVaults.length === 0) return;
+
+    let cancelled = false;
+
+    async function init() {
+      // Layer 1: Try cache first
+      const hadCache = await loadFromCache();
+
+      if (cancelled) return;
+
+      // Layer 2: Background scan (always, to discover new positions)
+      if (!bgScanDone.current) {
+        bgScanDone.current = true;
+        if (!hadCache) {
+          // No cache — do foreground full scan instead
+          await findPositions();
+        } else {
+          // Had cache — scan in background
+          backgroundScan();
+        }
+      }
     }
+
+    init();
+    return () => { cancelled = true; };
   }, [publicKey, discoveredVaults.length]);
 
   // Clear state on disconnect
@@ -171,6 +318,8 @@ export function FlashLoanInterface() {
     if (!publicKey) {
       setPositions([]);
       setSelectedKey(null);
+      setLastScanned(null);
+      bgScanDone.current = false;
     }
   }, [publicKey]);
 
@@ -248,6 +397,8 @@ export function FlashLoanInterface() {
                 previewLtv={preview?.ltv}
                 previewCollateral={preview?.collateral}
                 previewDebt={preview?.debt}
+                lastScanned={lastScanned}
+                isBackgroundScanning={isBackgroundScanning}
               />
 
               {/* Right: Operation Tabs */}
