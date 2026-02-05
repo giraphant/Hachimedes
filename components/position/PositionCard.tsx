@@ -29,32 +29,9 @@ export function PositionCard({
   previewDebt,
 }: PositionCardProps) {
   const ltv = position.ltv ?? 0;
-  const ltvColor = ltv < 70 ? 'text-green-400' : ltv < vaultConfig.maxLtv ? 'text-yellow-400' : 'text-red-400';
 
-  if (!selected) {
-    return (
-      <button
-        type="button"
-        onClick={onSelect}
-        className="w-full text-left p-3 rounded-lg border border-slate-700/40 bg-slate-900/20 hover:border-slate-600 transition-all"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-slate-600" />
-            <span className="text-sm font-medium text-slate-300">
-              {vaultConfig.name} #{vaultConfig.id}
-            </span>
-          </div>
-          <div className="flex items-center gap-3 text-xs">
-            <span className={ltvColor}>LTV {ltv.toFixed(1)}%</span>
-            <span className="text-slate-500">
-              {position.collateralAmountUi.toFixed(2)} {vaultConfig.collateralToken} | {position.debtAmountUi.toFixed(0)} {vaultConfig.debtToken}
-            </span>
-          </div>
-        </div>
-      </button>
-    );
-  }
+  // Only render expanded detail view (compact rows are now in PositionList table)
+  if (!selected) return null;
 
   return (
     <div className="rounded-lg border-2 border-blue-500/50 bg-slate-900/40 p-4 space-y-4">
@@ -62,7 +39,7 @@ export function PositionCard({
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-blue-500" />
           <span className="px-2 py-1 rounded bg-blue-950/50 text-blue-400 border border-blue-900/50">
-            {vaultConfig.name} #{vaultConfig.id}
+            {vaultConfig.collateralToken}/{vaultConfig.debtToken} #{vaultConfig.id}
           </span>
         </div>
         <span className="text-slate-500">
