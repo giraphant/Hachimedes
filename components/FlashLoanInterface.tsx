@@ -720,7 +720,7 @@ export function FlashLoanInterface() {
     }
   }, [operationType, publicKey, vaultId, discoveredVaults.length]);
 
-  // Rebalance preview
+  // Rebalance preview - calculate LTV correctly using debt prices
   const rebalancePreview = useMemo(() => {
     if (!rebalanceSourceVaultId || !rebalanceTargetVaultId || !rebalanceAmount) return null;
     const amount = parseFloat(rebalanceAmount);
@@ -730,18 +730,32 @@ export function FlashLoanInterface() {
     const targetPos = allPositions[rebalanceTargetVaultId];
     if (!sourcePos || !targetPos) return null;
 
-    const sourcePrice = sourcePos.oraclePrice ?? 0;
-    const targetPrice = targetPos.oraclePrice ?? 0;
-    if (!sourcePrice || !targetPrice) return null;
+    const sourceColPrice = sourcePos.oraclePrice ?? 0;
+    const targetColPrice = targetPos.oraclePrice ?? 0;
+    if (!sourceColPrice || !targetColPrice) return null;
+
+    // For debt price: use the value from position (which was computed correctly)
+    // If position has debt but no debtPrice, we can't compute preview
+    const sourceDebtPrice = sourcePos.debtPrice;
+    const targetDebtPrice = targetPos.debtPrice;
+    if (sourcePos.debtAmountUi > 0 && !sourceDebtPrice) {
+      console.warn('[rebalancePreview] Missing source debt price');
+      return null;
+    }
+    if (targetPos.debtAmountUi > 0 && !targetDebtPrice) {
+      console.warn('[rebalancePreview] Missing target debt price');
+      return null;
+    }
 
     const sourceNewCol = sourcePos.collateralAmountUi - amount;
     const targetNewCol = targetPos.collateralAmountUi + amount;
 
-    const sourceLtv = sourceNewCol > 0 && sourcePos.debtAmountUi > 0
-      ? (sourcePos.debtAmountUi / (sourceNewCol * sourcePrice)) * 100
+    // LTV = (debt × debtPrice) / (collateral × colPrice) × 100
+    const sourceLtv = sourceNewCol > 0 && sourcePos.debtAmountUi > 0 && sourceDebtPrice
+      ? ((sourcePos.debtAmountUi * sourceDebtPrice) / (sourceNewCol * sourceColPrice)) * 100
       : sourceNewCol <= 0 ? Infinity : 0;
-    const targetLtv = targetNewCol > 0 && targetPos.debtAmountUi > 0
-      ? (targetPos.debtAmountUi / (targetNewCol * targetPrice)) * 100
+    const targetLtv = targetNewCol > 0 && targetPos.debtAmountUi > 0 && targetDebtPrice
+      ? ((targetPos.debtAmountUi * targetDebtPrice) / (targetNewCol * targetColPrice)) * 100
       : 0;
 
     return { sourceLtv, targetLtv, sourceNewCol, targetNewCol };
@@ -761,6 +775,21 @@ export function FlashLoanInterface() {
       if (!sourcePos || !targetPos) throw new Error('Position not found');
 
       const sourceConfig = getVaultConfig(rebalanceSourceVaultId);
+
+      // Pre-check: Verify source LTV won't exceed max after withdrawal
+      if (sourcePos.oraclePrice && sourcePos.debtPrice && sourcePos.debtAmountUi > 0) {
+        const newCollateral = sourcePos.collateralAmountUi - amount;
+        if (newCollateral <= 0) {
+          throw new Error(`Cannot withdraw ${amount}: exceeds available collateral (${sourcePos.collateralAmountUi.toFixed(4)})`);
+        }
+        const debtValueUsd = sourcePos.debtAmountUi * sourcePos.debtPrice;
+        const newCollateralValueUsd = newCollateral * sourcePos.oraclePrice;
+        const newLtv = (debtValueUsd / newCollateralValueUsd) * 100;
+        if (newLtv > sourceConfig.maxLtv) {
+          throw new Error(`Withdrawal would push source LTV to ${newLtv.toFixed(1)}%, exceeding max ${sourceConfig.maxLtv}%`);
+        }
+        console.log(`Pre-check: source LTV after withdrawal = ${newLtv.toFixed(2)}% (max: ${sourceConfig.maxLtv}%)`);
+      }
 
       const { buildRebalanceTransaction } = await import('@/lib/rebalance');
       const { sendJitoMultiTxBundle } = await import('@/lib/jito-bundle');

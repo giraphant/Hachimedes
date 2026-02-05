@@ -21,6 +21,10 @@ export interface RebalanceResult {
 /**
  * Build rebalance transaction(s): withdraw from source vault, deposit into target vault.
  * Tries single TX first; if too large, returns 2 TXs for Jito Bundle.
+ *
+ * ⚠️ IMPORTANT: Source vault must have enough "free" collateral.
+ * Free collateral = collateral - (debt / price / maxLtv)
+ * If withdrawing would push LTV above max, the transaction will fail.
  */
 export async function buildRebalanceTransaction(params: RebalanceParams): Promise<RebalanceResult> {
   const {
@@ -38,31 +42,49 @@ export async function buildRebalanceTransaction(params: RebalanceParams): Promis
   console.log('════════════════════════════════════════');
   console.log(`Source: vault ${sourceVaultId}, position ${sourcePositionId}`);
   console.log(`Target: vault ${targetVaultId}, position ${targetPositionId}`);
-  console.log(`Amount: ${collateralAmount} (raw: ${amountRaw})`);
+  console.log(`Amount: ${collateralAmount} (raw: ${amountRaw})  [scale: ${scale}]`);
 
   // Step 1: Build withdraw instruction (source vault)
-  const withdrawResult = await getOperateIx({
-    vaultId: sourceVaultId,
-    positionId: sourcePositionId,
-    colAmount: new BN(-amountRaw),  // negative = withdraw
-    debtAmount: new BN(0),          // no debt change
-    connection,
-    signer: userPublicKey,
-    recipient: userPublicKey,
-    positionOwner: userPublicKey,
-  });
+  console.log('\n[Step 1] Building withdraw instruction from source vault...');
+  console.log(`  getOperateIx({ vaultId: ${sourceVaultId}, positionId: ${sourcePositionId}, colAmount: -${amountRaw}, debtAmount: 0 })`);
+  let withdrawResult;
+  try {
+    withdrawResult = await getOperateIx({
+      vaultId: sourceVaultId,
+      positionId: sourcePositionId,
+      colAmount: new BN(-amountRaw),  // negative = withdraw
+      debtAmount: new BN(0),          // no debt change
+      connection,
+      signer: userPublicKey,
+      recipient: userPublicKey,
+      positionOwner: userPublicKey,
+    });
+    console.log(`  ✓ Withdraw IX built: ${withdrawResult.ixs.length} instructions`);
+  } catch (err) {
+    console.error(`  ✗ Failed to build withdraw IX:`, err);
+    throw new Error(`Failed to build withdraw from source vault: ${err}`);
+  }
 
   // Step 2: Build deposit instruction (target vault)
-  const depositResult = await getOperateIx({
-    vaultId: targetVaultId,
-    positionId: targetPositionId,
-    colAmount: new BN(amountRaw),   // positive = deposit
-    debtAmount: new BN(0),          // no debt change
-    connection,
-    signer: userPublicKey,
-    recipient: userPublicKey,
-    positionOwner: userPublicKey,
-  });
+  console.log('\n[Step 2] Building deposit instruction to target vault...');
+  console.log(`  getOperateIx({ vaultId: ${targetVaultId}, positionId: ${targetPositionId}, colAmount: ${amountRaw}, debtAmount: 0 })`);
+  let depositResult;
+  try {
+    depositResult = await getOperateIx({
+      vaultId: targetVaultId,
+      positionId: targetPositionId,
+      colAmount: new BN(amountRaw),   // positive = deposit
+      debtAmount: new BN(0),          // no debt change
+      connection,
+      signer: userPublicKey,
+      recipient: userPublicKey,
+      positionOwner: userPublicKey,
+    });
+    console.log(`  ✓ Deposit IX built: ${depositResult.ixs.length} instructions`);
+  } catch (err) {
+    console.error(`  ✗ Failed to build deposit IX:`, err);
+    throw new Error(`Failed to build deposit to target vault: ${err}`);
+  }
 
   // Collect all address lookup tables
   const seenKeys = new Set<string>();
