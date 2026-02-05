@@ -15,7 +15,7 @@ export interface RebalanceParams {
 
 export interface RebalanceResult {
   transactions: VersionedTransaction[];  // 1 or 2 TXs
-  mode: 'single' | 'jito-bundle';
+  mode: 'single' | 'jito-bundle' | 'sequential';  // sequential = withdraw first, then deposit
 }
 
 /**
@@ -97,69 +97,11 @@ export async function buildRebalanceTransaction(params: RebalanceParams): Promis
     }
   }
 
-  // Try single transaction
-  const allInstructions: TransactionInstruction[] = [
-    ...withdrawResult.ixs,
-    ...depositResult.ixs,
-  ];
-
   const latestBlockhash = await connection.getLatestBlockhash('finalized');
 
-  try {
-    const message = new TransactionMessage({
-      payerKey: userPublicKey,
-      recentBlockhash: latestBlockhash.blockhash,
-      instructions: allInstructions,
-    }).compileToV0Message(allLuts);
-
-    const tx = new VersionedTransaction(message);
-    const serialized = tx.serialize();
-
-    if (serialized.length <= 1232) {
-      console.log(`Single transaction: ${serialized.length} bytes`);
-
-      // Simulate transaction before returning
-      console.log('\n[Step 3] Simulating transaction...');
-      try {
-        const simResult = await connection.simulateTransaction(tx, {
-          sigVerify: false,
-          replaceRecentBlockhash: true,
-        });
-
-        if (simResult.value.err) {
-          console.error('Simulation failed:', simResult.value.err);
-          console.error('Logs:', simResult.value.logs);
-
-          // Parse the error for user-friendly message
-          const logs = simResult.value.logs || [];
-          const errorLog = logs.find(l => l.includes('Error:') || l.includes('failed:'));
-          const errorMsg = errorLog || JSON.stringify(simResult.value.err);
-          throw new Error(`Transaction simulation failed: ${errorMsg}`);
-        }
-        console.log('  ✓ Simulation passed');
-        console.log(`  Compute units: ${simResult.value.unitsConsumed}`);
-      } catch (simErr: any) {
-        // Re-throw with more context
-        if (simErr.message?.includes('simulation failed')) {
-          throw simErr;
-        }
-        throw new Error(`Simulation error: ${simErr.message || simErr}`);
-      }
-
-      return { transactions: [tx], mode: 'single' };
-    }
-    console.log(`Single TX too large: ${serialized.length} bytes, falling back to Jito Bundle`);
-  } catch (err: any) {
-    // If it's a simulation error, propagate it
-    if (err.message?.includes('simulation') || err.message?.includes('Simulation')) {
-      throw err;
-    }
-    console.log('Single TX failed to serialize, falling back to Jito Bundle');
-  }
-
-  // Fallback: two transactions for Jito Bundle
-  const { createJitoTipInstruction } = await import('./jito-bundle');
-  const tipIx = createJitoTipInstruction(userPublicKey, 10000);
+  // Build two separate transactions for sequential execution
+  // (SDK doesn't support atomic withdraw+deposit in single TX when wallet has no tokens)
+  console.log('\n[Step 3] Building sequential transactions (withdraw → deposit)...');
 
   const tx1Message = new TransactionMessage({
     payerKey: userPublicKey,
@@ -170,12 +112,38 @@ export async function buildRebalanceTransaction(params: RebalanceParams): Promis
   const tx2Message = new TransactionMessage({
     payerKey: userPublicKey,
     recentBlockhash: latestBlockhash.blockhash,
-    instructions: [...depositResult.ixs, tipIx],
+    instructions: depositResult.ixs,
   }).compileToV0Message(depositResult.addressLookupTableAccounts ?? []);
 
   const tx1 = new VersionedTransaction(tx1Message);
   const tx2 = new VersionedTransaction(tx2Message);
 
-  console.log('Jito Bundle: 2 transactions built');
-  return { transactions: [tx1, tx2], mode: 'jito-bundle' };
+  // Simulate withdraw transaction
+  console.log('\n[Step 4] Simulating withdraw transaction...');
+  try {
+    const simResult = await connection.simulateTransaction(tx1, {
+      sigVerify: false,
+      replaceRecentBlockhash: true,
+    });
+
+    if (simResult.value.err) {
+      console.error('Withdraw simulation failed:', simResult.value.err);
+      console.error('Logs:', simResult.value.logs);
+      const logs = simResult.value.logs || [];
+      const errorLog = logs.find(l => l.includes('Error:') || l.includes('failed:'));
+      throw new Error(`Withdraw simulation failed: ${errorLog || JSON.stringify(simResult.value.err)}`);
+    }
+    console.log('  ✓ Withdraw simulation passed');
+  } catch (simErr: any) {
+    if (simErr.message?.includes('simulation failed') || simErr.message?.includes('Withdraw simulation')) {
+      throw simErr;
+    }
+    throw new Error(`Withdraw simulation error: ${simErr.message || simErr}`);
+  }
+
+  console.log('Sequential transactions: withdraw first, then deposit');
+  console.log(`  TX1 (withdraw): ${tx1.serialize().length} bytes`);
+  console.log(`  TX2 (deposit): ${tx2.serialize().length} bytes`);
+
+  return { transactions: [tx1, tx2], mode: 'sequential' };
 }

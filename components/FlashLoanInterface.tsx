@@ -689,17 +689,14 @@ export function FlashLoanInterface() {
   const getAllPositionsCacheKey = (walletAddress: string, collateralMint: string) =>
     `hachimedes_all_positions_${walletAddress}_${collateralMint}`;
 
-  const getCachedAllPositions = (walletAddress: string, collateralMint: string): Record<number, { positionId: number }> | null => {
+  const getCachedAllPositions = (walletAddress: string, collateralMint: string): { positions: Record<number, { positionId: number }>; timestamp: number } | null => {
     try {
       const key = getAllPositionsCacheKey(walletAddress, collateralMint);
       const cached = localStorage.getItem(key);
       if (!cached) return null;
       const data = JSON.parse(cached);
-      // Check cache age (24 hours max)
-      if (data.timestamp && Date.now() - data.timestamp > 24 * 60 * 60 * 1000) {
-        return null;
-      }
-      return data.positions;
+      // Return with timestamp so UI can show age
+      return { positions: data.positions, timestamp: data.timestamp };
     } catch {
       return null;
     }
@@ -714,21 +711,28 @@ export function FlashLoanInterface() {
     }
   };
 
+  // State for cache age warning
+  const [positionCacheAge, setPositionCacheAge] = useState<number | null>(null);
+
   // Load positions for all same-collateral vaults (for rebalance)
-  // Uses stale-while-revalidate: returns cached data immediately, refreshes in background
+  // Uses permanent cache: returns cached data immediately, shows age warning if old
   const loadAllSameCollateralPositions = async (collateralMint: string, forceRefresh = false) => {
     if (!publicKey) return;
 
     const sameColVaults = discoveredVaults.filter(v => v.collateralMint === collateralMint);
 
-    // Step 1: Try to load from cache immediately
+    // Step 1: Try to load from cache immediately (permanent cache)
     if (!forceRefresh) {
       const cached = getCachedAllPositions(publicKey.toString(), collateralMint);
-      if (cached) {
-        console.log('[rebalance] Loading cached position IDs, will refresh in background');
+      if (cached && cached.positions && Object.keys(cached.positions).length > 0) {
+        const ageMs = Date.now() - cached.timestamp;
+        const ageHours = ageMs / (1000 * 60 * 60);
+        console.log(`[rebalance] Loading cached position IDs (age: ${ageHours.toFixed(1)}h)`);
+        setPositionCacheAge(ageMs);
+
         // Load position info for cached position IDs
         const results: Record<number, PositionInfo | null> = {};
-        const loadPromises = Object.entries(cached).map(async ([vid, data]) => {
+        const loadPromises = Object.entries(cached.positions).map(async ([vid, data]) => {
           const vaultId = parseInt(vid);
           try {
             const info = await fetchPositionInfo(connection, vaultId, data.positionId, publicKey);
@@ -740,12 +744,12 @@ export function FlashLoanInterface() {
         await Promise.all(loadPromises);
         setAllPositions(results);
         setIsLoadingAllPositions(false);
-
-        // Background refresh
-        refreshAllPositionsInBackground(collateralMint, sameColVaults);
         return;
       }
     }
+
+    // Clear cache age when doing fresh scan
+    setPositionCacheAge(null);
 
     // Step 2: Full scan
     setIsLoadingAllPositions(true);
@@ -909,7 +913,28 @@ export function FlashLoanInterface() {
         const sig = await connection.sendTransaction(signed, { skipPreflight: false, preflightCommitment: 'confirmed' });
         await connection.confirmTransaction(sig, 'confirmed');
         toast({ title: 'Rebalance 成功', description: `Tx: ${sig.slice(0, 8)}...` });
+      } else if (result.mode === 'sequential') {
+        // Sequential: withdraw first, wait for confirmation, then deposit
+        toast({ title: '第 1/2 步：请确认取款交易' });
+        const signedWithdraw = await signTransaction(result.transactions[0]);
+        const withdrawSig = await connection.sendTransaction(signedWithdraw, { skipPreflight: false, preflightCommitment: 'confirmed' });
+        toast({ title: '取款交易已发送，等待确认...', description: `Tx: ${withdrawSig.slice(0, 8)}...` });
+        await connection.confirmTransaction(withdrawSig, 'confirmed');
+        toast({ title: '取款成功！' });
+
+        // Now deposit - need fresh blockhash
+        toast({ title: '第 2/2 步：请确认存款交易' });
+        const freshBlockhash = await connection.getLatestBlockhash('finalized');
+        const depositTx = result.transactions[1];
+        depositTx.message.recentBlockhash = freshBlockhash.blockhash;
+
+        const signedDeposit = await signTransaction(depositTx);
+        const depositSig = await connection.sendTransaction(signedDeposit, { skipPreflight: false, preflightCommitment: 'confirmed' });
+        toast({ title: '存款交易已发送，等待确认...', description: `Tx: ${depositSig.slice(0, 8)}...` });
+        await connection.confirmTransaction(depositSig, 'confirmed');
+        toast({ title: 'Rebalance 完成！', description: '抵押品已转移到目标池' });
       } else {
+        // Jito bundle
         toast({ title: '请签名 2 个交易（Jito Bundle）' });
         const signed = [];
         for (const tx of result.transactions) {
@@ -1282,6 +1307,21 @@ export function FlashLoanInterface() {
               {operationType === 'rebalance' ? (
               /* Rebalance Panel */
               <div className="space-y-4 p-4 rounded-lg bg-slate-950/50 border border-slate-800">
+                {/* Cache age warning */}
+                {positionCacheAge && positionCacheAge > 60 * 60 * 1000 && (
+                  <div className="flex items-center justify-between p-2 rounded bg-yellow-900/20 border border-yellow-700/30 text-xs">
+                    <span className="text-yellow-400">
+                      仓位数据缓存于 {Math.floor(positionCacheAge / (1000 * 60 * 60))} 小时前
+                    </span>
+                    <button
+                      onClick={() => loadAllSameCollateralPositions(vaultConfig.collateralMint, true)}
+                      className="text-yellow-300 hover:text-yellow-100 underline"
+                    >
+                      刷新
+                    </button>
+                  </div>
+                )}
+
                 {isLoadingAllPositions ? (
                   <div className="flex items-center justify-center gap-2 text-slate-400 py-4">
                     <Loader2 className="h-4 w-4 animate-spin" />
