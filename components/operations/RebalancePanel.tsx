@@ -1,0 +1,302 @@
+'use client';
+
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { Loader2, ArrowRightLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { PositionInfo, fetchPositionInfo } from '@/lib/position';
+import { VaultConfig, getVaultConfig } from '@/lib/vaults';
+import { DiscoveredVault } from '@/lib/vault-discovery';
+
+interface RebalancePanelProps {
+  discoveredVaults: DiscoveredVault[];
+  currentVaultConfig: VaultConfig;
+  onSuccess: () => void;
+}
+
+// Cache helpers
+const getAllPositionsCacheKey = (wallet: string, collateralMint: string) =>
+  `hachimedes_all_positions_${wallet}_${collateralMint}`;
+
+export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess }: RebalancePanelProps) {
+  const { publicKey, signTransaction } = useWallet();
+  const { connection } = useConnection();
+  const { toast } = useToast();
+
+  const [allPositions, setAllPositions] = useState<Record<number, PositionInfo | null>>({});
+  const [isLoadingAllPositions, setIsLoadingAllPositions] = useState(false);
+  const [positionCacheAge, setPositionCacheAge] = useState<number | null>(null);
+
+  const [sourceVaultId, setSourceVaultId] = useState<number | null>(null);
+  const [targetVaultId, setTargetVaultId] = useState<number | null>(null);
+  const [amount, setAmount] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Available vaults with positions
+  const rebalanceVaults = useMemo(() => {
+    return Object.entries(allPositions)
+      .filter(([, pos]) => pos !== null)
+      .map(([vid, pos]) => ({ vaultId: parseInt(vid), position: pos! }));
+  }, [allPositions]);
+
+  // Load positions for same-collateral vaults
+  const loadAllSameCollateralPositions = useCallback(async (collateralMint: string, forceRefresh = false) => {
+    if (!publicKey) return;
+    const sameColVaults = discoveredVaults.filter(v => v.collateralMint === collateralMint);
+
+    // Try cache first
+    if (!forceRefresh) {
+      try {
+        const key = getAllPositionsCacheKey(publicKey.toString(), collateralMint);
+        const cached = localStorage.getItem(key);
+        if (cached) {
+          const data = JSON.parse(cached);
+          if (data.positions && Object.keys(data.positions).length > 0) {
+            const ageMs = Date.now() - data.timestamp;
+            setPositionCacheAge(ageMs);
+            const results: Record<number, PositionInfo | null> = {};
+            const loadPromises = Object.entries(data.positions).map(async ([vid, posData]: [string, any]) => {
+              try {
+                const info = await fetchPositionInfo(connection, parseInt(vid), posData.positionId, publicKey);
+                if (info) results[parseInt(vid)] = info;
+              } catch { /* skip */ }
+            });
+            await Promise.all(loadPromises);
+            setAllPositions(results);
+            setIsLoadingAllPositions(false);
+            return;
+          }
+        }
+      } catch { /* fall through to full scan */ }
+    }
+
+    setPositionCacheAge(null);
+    setIsLoadingAllPositions(true);
+    try {
+      const { findUserPositionsByNFT } = await import('@/lib/find-positions-nft');
+      const results: Record<number, PositionInfo | null> = {};
+      const positionIdsCache: Record<number, { positionId: number }> = {};
+
+      for (const vault of sameColVaults) {
+        try {
+          const positions = await findUserPositionsByNFT(connection, vault.id, publicKey, 100000);
+          if (positions.length > 0) {
+            const info = await fetchPositionInfo(connection, vault.id, positions[0], publicKey);
+            results[vault.id] = info;
+            positionIdsCache[vault.id] = { positionId: positions[0] };
+          }
+        } catch { /* skip */ }
+      }
+
+      setAllPositions(results);
+      if (Object.keys(positionIdsCache).length > 0) {
+        const key = getAllPositionsCacheKey(publicKey.toString(), collateralMint);
+        localStorage.setItem(key, JSON.stringify({ positions: positionIdsCache, timestamp: Date.now() }));
+      }
+    } catch (e) {
+      console.error('Failed to load positions:', e);
+    } finally {
+      setIsLoadingAllPositions(false);
+    }
+  }, [publicKey, discoveredVaults, connection]);
+
+  // Load on mount
+  useEffect(() => {
+    if (publicKey && discoveredVaults.length > 0) {
+      loadAllSameCollateralPositions(currentVaultConfig.collateralMint);
+    }
+  }, [publicKey, discoveredVaults.length, currentVaultConfig.collateralMint, loadAllSameCollateralPositions]);
+
+  // Preview
+  const rebalancePreview = useMemo(() => {
+    if (!sourceVaultId || !targetVaultId || !amount) return null;
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) return null;
+
+    const sourcePos = allPositions[sourceVaultId];
+    const targetPos = allPositions[targetVaultId];
+    if (!sourcePos || !targetPos) return null;
+
+    const sourceColPrice = sourcePos.oraclePrice ?? 0;
+    const targetColPrice = targetPos.oraclePrice ?? 0;
+    if (!sourceColPrice || !targetColPrice) return null;
+
+    const sourceDebtPrice = sourcePos.debtPrice;
+    const targetDebtPrice = targetPos.debtPrice;
+    if (sourcePos.debtAmountUi > 0 && !sourceDebtPrice) return null;
+    if (targetPos.debtAmountUi > 0 && !targetDebtPrice) return null;
+
+    const sourceNewCol = sourcePos.collateralAmountUi - amountNum;
+    const targetNewCol = targetPos.collateralAmountUi + amountNum;
+
+    const sourceLtv = sourceNewCol > 0 && sourcePos.debtAmountUi > 0 && sourceDebtPrice
+      ? ((sourcePos.debtAmountUi * sourceDebtPrice) / (sourceNewCol * sourceColPrice)) * 100
+      : sourceNewCol <= 0 ? Infinity : 0;
+    const targetLtv = targetNewCol > 0 && targetPos.debtAmountUi > 0 && targetDebtPrice
+      ? ((targetPos.debtAmountUi * targetDebtPrice) / (targetNewCol * targetColPrice)) * 100
+      : 0;
+
+    return { sourceLtv, targetLtv, sourceNewCol, targetNewCol };
+  }, [allPositions, sourceVaultId, targetVaultId, amount]);
+
+  // Execute
+  const handleRebalance = useCallback(async () => {
+    if (!publicKey || !signTransaction || !sourceVaultId || !targetVaultId) return;
+
+    setIsLoading(true);
+    try {
+      const amountNum = parseFloat(amount);
+      if (isNaN(amountNum) || amountNum <= 0) throw new Error('Invalid amount');
+
+      const sourcePos = allPositions[sourceVaultId];
+      const targetPos = allPositions[targetVaultId];
+      if (!sourcePos || !targetPos) throw new Error('Position not found');
+
+      const sourceConfig = getVaultConfig(sourceVaultId);
+
+      // Pre-check
+      if (sourcePos.oraclePrice && sourcePos.debtPrice && sourcePos.debtAmountUi > 0) {
+        const newCollateral = sourcePos.collateralAmountUi - amountNum;
+        if (newCollateral <= 0) throw new Error(`Cannot withdraw ${amountNum}: exceeds available collateral (${sourcePos.collateralAmountUi.toFixed(4)})`);
+        const debtValueUsd = sourcePos.debtAmountUi * sourcePos.debtPrice;
+        const newCollateralValueUsd = newCollateral * sourcePos.oraclePrice;
+        const newLtv = (debtValueUsd / newCollateralValueUsd) * 100;
+        if (newLtv > sourceConfig.maxLtv) throw new Error(`Withdrawal would push source LTV to ${newLtv.toFixed(1)}%, exceeding max ${sourceConfig.maxLtv}%`);
+      }
+
+      const { buildRebalanceTransaction } = await import('@/lib/rebalance');
+      const { sendJitoMultiTxBundle } = await import('@/lib/jito-bundle');
+
+      const result = await buildRebalanceTransaction({
+        sourceVaultId, sourcePositionId: sourcePos.positionId,
+        targetVaultId, targetPositionId: targetPos.positionId,
+        collateralAmount: amountNum, collateralDecimals: sourceConfig.collateralDecimals,
+        userPublicKey: publicKey, connection,
+      });
+
+      if (result.mode === 'single') {
+        toast({ title: '请在钱包中确认交易（原子操作）' });
+        const signed = await signTransaction(result.transactions[0]);
+        const sig = await connection.sendTransaction(signed, { skipPreflight: false, preflightCommitment: 'confirmed' });
+        await connection.confirmTransaction(sig, 'confirmed');
+        toast({ title: 'Rebalance 成功！', description: `单笔原子交易: ${sig.slice(0, 8)}...` });
+      } else {
+        toast({ title: '请签名 2 个交易（Jito Bundle）' });
+        const signed = [];
+        for (const tx of result.transactions) signed.push(await signTransaction(tx));
+        const bundleId = await sendJitoMultiTxBundle(connection, signed);
+        toast({ title: 'Rebalance Bundle 已发送', description: `Bundle: ${bundleId.slice(0, 8)}...` });
+      }
+
+      setAmount('');
+      loadAllSameCollateralPositions(currentVaultConfig.collateralMint);
+      onSuccess();
+    } catch (e: any) {
+      toast({ title: 'Rebalance 失败', description: e.message, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [publicKey, signTransaction, sourceVaultId, targetVaultId, amount, allPositions, currentVaultConfig, connection, toast, onSuccess, loadAllSameCollateralPositions]);
+
+  return (
+    <div className="space-y-4 p-4 rounded-lg bg-slate-950/50 border border-slate-800">
+      {/* Cache age warning */}
+      {positionCacheAge && positionCacheAge > 60 * 60 * 1000 && (
+        <div className="flex items-center justify-between p-2 rounded bg-yellow-900/20 border border-yellow-700/30 text-xs">
+          <span className="text-yellow-400">仓位数据缓存于 {Math.floor(positionCacheAge / (1000 * 60 * 60))} 小时前</span>
+          <button onClick={() => loadAllSameCollateralPositions(currentVaultConfig.collateralMint, true)} className="text-yellow-300 hover:text-yellow-100 underline">刷新</button>
+        </div>
+      )}
+
+      {isLoadingAllPositions ? (
+        <div className="flex items-center justify-center gap-2 text-slate-400 py-4">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm">正在搜索同抵押品池子的仓位...</span>
+        </div>
+      ) : rebalanceVaults.length < 2 ? (
+        <div className="text-center py-4">
+          <p className="text-slate-400 text-sm">需要在至少 2 个同抵押品池子中有仓位才能 Rebalance</p>
+          <p className="text-xs text-slate-500 mt-1">找到 {rebalanceVaults.length} 个有仓位的池子（{currentVaultConfig.collateralToken} 抵押品）</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Source */}
+          <div className="space-y-2">
+            <Label className="text-slate-300 text-sm">转出池（健康的）</Label>
+            <Select value={sourceVaultId?.toString() ?? ''} onValueChange={(val) => setSourceVaultId(parseInt(val))}>
+              <SelectTrigger className="bg-slate-900/70 border-slate-700 text-sm"><SelectValue placeholder="选择转出池" /></SelectTrigger>
+              <SelectContent>
+                {rebalanceVaults.filter(v => v.vaultId !== targetVaultId).map(({ vaultId: vid, position: pos }) => {
+                  const vc = getVaultConfig(vid);
+                  return <SelectItem key={vid} value={vid.toString()}>{vc.name} (#{vid}) — LTV: {pos.ltv?.toFixed(1) ?? '?'}% — 抵押: {pos.collateralAmountUi.toFixed(2)}</SelectItem>;
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Target */}
+          <div className="space-y-2">
+            <Label className="text-slate-300 text-sm">转入池（需要补充的）</Label>
+            <Select value={targetVaultId?.toString() ?? ''} onValueChange={(val) => setTargetVaultId(parseInt(val))}>
+              <SelectTrigger className="bg-slate-900/70 border-slate-700 text-sm"><SelectValue placeholder="选择转入池" /></SelectTrigger>
+              <SelectContent>
+                {rebalanceVaults.filter(v => v.vaultId !== sourceVaultId).map(({ vaultId: vid, position: pos }) => {
+                  const vc = getVaultConfig(vid);
+                  return <SelectItem key={vid} value={vid.toString()}>{vc.name} (#{vid}) — LTV: {pos.ltv?.toFixed(1) ?? '?'}% — 抵押: {pos.collateralAmountUi.toFixed(2)}</SelectItem>;
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Amount */}
+          <div className="space-y-2">
+            <Label className="text-slate-300 text-sm">转移数量 ({currentVaultConfig.collateralToken})</Label>
+            <Input type="number" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="bg-slate-900 border-slate-700 text-white" step="0.01" />
+          </div>
+
+          {/* Preview */}
+          {rebalancePreview && (
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="p-3 rounded-lg bg-slate-900/30 border border-slate-700/40">
+                <div className="text-xs text-slate-500 mb-1">转出池 LTV</div>
+                <div className={`font-bold ${rebalancePreview.sourceLtv > 85 ? 'text-red-400' : rebalancePreview.sourceLtv > 75 ? 'text-yellow-400' : 'text-green-400'}`}>
+                  {allPositions[sourceVaultId!]?.ltv?.toFixed(1) ?? '?'}% → {rebalancePreview.sourceLtv === Infinity ? '∞' : rebalancePreview.sourceLtv.toFixed(1)}%
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-900/30 border border-slate-700/40">
+                <div className="text-xs text-slate-500 mb-1">转入池 LTV</div>
+                <div className={`font-bold ${rebalancePreview.targetLtv > 85 ? 'text-red-400' : rebalancePreview.targetLtv > 75 ? 'text-yellow-400' : 'text-green-400'}`}>
+                  {allPositions[targetVaultId!]?.ltv?.toFixed(1) ?? '?'}% → {rebalancePreview.targetLtv.toFixed(1)}%
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Execute */}
+          <Button
+            onClick={handleRebalance}
+            disabled={!publicKey || isLoading || !sourceVaultId || !targetVaultId || !amount}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+            size="lg"
+          >
+            {isLoading ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />执行中...</>
+            ) : (
+              <><ArrowRightLeft className="mr-2 h-4 w-4" />执行 Rebalance（跨池平衡）</>
+            )}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
