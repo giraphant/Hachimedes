@@ -354,33 +354,33 @@ export function FlashLoanInterface() {
                   <h2 className="text-3xl font-bold bg-gradient-to-r from-green-400 via-emerald-300 to-cyan-400 bg-clip-text text-transparent">
                     给我一个杠杆，我能撬动整个木星
                   </h2>
-                  <p className="text-muted-foreground text-lg">一键闪电贷操作 · 单笔交易完成加/去杠杆 · 安全高效</p>
+                  <p className="text-muted-foreground text-lg">一键闪电贷 · 原子交易 · 安全高效</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6">
                   <Card className="bg-secondary border-border">
                     <CardContent className="p-4 text-center">
                       <Zap className="h-8 w-8 text-cyan-400 mx-auto mb-2" />
-                      <div className="font-semibold text-foreground mb-1">Flash Loan</div>
-                      <div className="text-xs text-muted-foreground">零成本借贷</div>
+                      <div className="font-semibold text-foreground mb-1">闪电借贷</div>
+                      <div className="text-xs text-muted-foreground">零成本</div>
                     </CardContent>
                   </Card>
                   <Card className="bg-secondary border-border">
                     <CardContent className="p-4 text-center">
                       <RefreshCw className="h-8 w-8 text-purple-400 mx-auto mb-2" />
-                      <div className="font-semibold text-foreground mb-1">自动 Swap</div>
+                      <div className="font-semibold text-foreground mb-1">智能路由</div>
                       <div className="text-xs text-muted-foreground">Jupiter 聚合</div>
                     </CardContent>
                   </Card>
                   <Card className="bg-secondary border-border">
                     <CardContent className="p-4 text-center">
                       <Target className="h-8 w-8 text-emerald-400 mx-auto mb-2" />
-                      <div className="font-semibold text-foreground mb-1">一键完成</div>
-                      <div className="text-xs text-muted-foreground">原子操作</div>
+                      <div className="font-semibold text-foreground mb-1">一键执行</div>
+                      <div className="text-xs text-muted-foreground">全部或回滚</div>
                     </CardContent>
                   </Card>
                 </div>
                 <div className="pt-6">
-                  <p className="text-muted-foreground mb-4">请先连接钱包开始使用</p>
+                  <p className="text-muted-foreground mb-4">连接钱包，开始使用</p>
                 </div>
               </CardContent>
             </Card>

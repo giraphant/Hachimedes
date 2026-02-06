@@ -43,7 +43,7 @@ export function PositionCard({
           </span>
         </div>
         <span className="text-muted-foreground">
-          最大:{vaultConfig.maxLtv}% · 清算:{vaultConfig.liquidationLtv}%
+          最大 LTV {vaultConfig.maxLtv}% · 清算线 {vaultConfig.liquidationLtv}%
         </span>
       </div>
 

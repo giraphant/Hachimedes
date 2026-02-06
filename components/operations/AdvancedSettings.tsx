@@ -44,7 +44,7 @@ export function AdvancedSettings({
     <div className="flex items-center justify-between p-3 rounded-lg bg-secondary border border-border">
       <div className="flex items-center gap-2">
         <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-foreground/80">高级设置</span>
+        <span className="text-sm text-foreground/80">交易参数</span>
       </div>
       <Popover>
         <PopoverTrigger asChild>
@@ -87,7 +87,7 @@ export function AdvancedSettings({
 
             {/* Mode */}
             <div className="space-y-2">
-              <Label className="text-foreground/80 text-xs">Mode</Label>
+              <Label className="text-foreground/80 text-xs">执行模式</Label>
               <div className="flex gap-1.5">
                 <Button type="button" variant={!useJitoBundle ? 'default' : 'outline'} size="sm" onClick={() => onChange({ useJitoBundle: false })} className="flex-1 text-xs h-8">Flash Loan</Button>
                 <Button type="button" variant={useJitoBundle ? 'default' : 'outline'} size="sm" onClick={() => onChange({ useJitoBundle: true })} className="flex-1 text-xs h-8">Jito Bundle</Button>
@@ -100,7 +100,7 @@ export function AdvancedSettings({
                 <Label className="text-foreground/80 text-xs">优先费用</Label>
                 <span className="text-xs text-muted-foreground">
                   {priorityFee === 'default' && '默认'}
-                  {priorityFee === 'fast' && '快'}
+                  {priorityFee === 'fast' && '快速'}
                   {priorityFee === 'turbo' && '极速'}
                 </span>
               </div>
@@ -128,8 +128,8 @@ export function AdvancedSettings({
             {/* DEX selection */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-foreground/80 text-xs">DEX 限制</Label>
-                <span className="text-xs text-muted-foreground">{selectedDexes.length === 0 ? '自动' : selectedDexes.length}</span>
+                <Label className="text-foreground/80 text-xs">DEX 偏好</Label>
+                <span className="text-xs text-muted-foreground">{selectedDexes.length === 0 ? '自动选择' : selectedDexes.length}</span>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 {['Orca', 'Raydium', 'Whirlpool', 'Meteora'].map((dex) => (
@@ -149,7 +149,7 @@ export function AdvancedSettings({
                   <Button key={value} type="button" variant={maxAccounts === value ? 'default' : 'outline'} size="sm" onClick={() => onChange({ maxAccounts: value })} className="flex-1 text-xs h-8">{value}</Button>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">交易过大时降低此值 (32→28→24→20)</p>
+              <p className="text-xs text-muted-foreground">交易失败时可尝试降低此值</p>
             </div>
           </div>
         </PopoverContent>

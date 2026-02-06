@@ -330,10 +330,10 @@ export function PositionManageDialog({
   };
 
   const operationLabels = {
-    deposit: '存入抵押品',
-    withdraw: '取出抵押品',
-    borrow: '借出债务',
-    repay: '偿还债务',
+    deposit: `存入 ${getVaultConfig(vaultId).collateralToken}`,
+    withdraw: `取出 ${getVaultConfig(vaultId).collateralToken}`,
+    borrow: `借入 ${getVaultConfig(vaultId).debtToken}`,
+    repay: `偿还 ${getVaultConfig(vaultId).debtToken}`,
   };
 
   const operationIcons = {
@@ -349,14 +349,14 @@ export function PositionManageDialog({
         <DialogHeader>
           <DialogTitle>仓位管理</DialogTitle>
           <DialogDescription>
-            管理您的抵押品和债务
+            调整抵押品或债务
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           {/* 操作类型选择 */}
           <div className="space-y-2">
-            <Label>操作类型</Label>
+            <Label>选择操作</Label>
             <Select
               value={operationType}
               onValueChange={(value) => setOperationType(value as OperationType)}
@@ -368,25 +368,25 @@ export function PositionManageDialog({
                 <SelectItem value="deposit">
                   <div className="flex items-center gap-2">
                     {operationIcons.deposit}
-                    <span>存入抵押品（{getVaultConfig(vaultId).collateralToken}）</span>
+                    <span>存入 {getVaultConfig(vaultId).collateralToken}</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="withdraw">
                   <div className="flex items-center gap-2">
                     {operationIcons.withdraw}
-                    <span>取出抵押品（{getVaultConfig(vaultId).collateralToken}）</span>
+                    <span>取出 {getVaultConfig(vaultId).collateralToken}</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="borrow">
                   <div className="flex items-center gap-2">
                     {operationIcons.borrow}
-                    <span>借出债务（{getVaultConfig(vaultId).debtToken}）</span>
+                    <span>借入 {getVaultConfig(vaultId).debtToken}</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="repay">
                   <div className="flex items-center gap-2">
                     {operationIcons.repay}
-                    <span>偿还债务（{getVaultConfig(vaultId).debtToken}）</span>
+                    <span>偿还 {getVaultConfig(vaultId).debtToken}</span>
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -455,8 +455,8 @@ export function PositionManageDialog({
               {maxAmount === 0 && (
                 <div className="text-xs text-amber-400 text-center">
                   {operationType === 'deposit' || operationType === 'repay'
-                    ? '钱包余额不足'
-                    : '当前仓位无法进行此操作'}
+                    ? '余额不足'
+                    : '当前仓位暂不支持此操作'}
                 </div>
               )}
             </div>
@@ -464,7 +464,7 @@ export function PositionManageDialog({
 
           {/* 当前状态 */}
           <div className="p-3 rounded-lg bg-secondary border border-border space-y-2">
-            <div className="text-sm font-medium text-foreground/80">当前状态</div>
+            <div className="text-sm font-medium text-foreground/80">当前仓位</div>
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <div className="text-muted-foreground">抵押品</div>
@@ -483,18 +483,18 @@ export function PositionManageDialog({
 
           {/* 预测状态 */}
           {predictedValues && (
-            <div className="p-3 rounded-lg bg-blue-950/30 border border-blue-800/50 space-y-2">
-              <div className="text-sm font-medium text-blue-300">预测状态</div>
+            <div className="p-3 rounded-lg bg-secondary border border-border space-y-2">
+              <div className="text-sm font-medium text-foreground/80">操作后预估</div>
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <div className="text-muted-foreground">抵押品</div>
-                  <div className="font-mono text-blue-300">
+                  <div className="font-mono text-foreground">
                     {predictedValues.newCollateral.toFixed(4)} {getVaultConfig(vaultId).collateralToken}
                   </div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">债务</div>
-                  <div className="font-mono text-blue-300">
+                  <div className="font-mono text-foreground">
                     {predictedValues.newDebt.toFixed(2)} {getVaultConfig(vaultId).debtToken}
                   </div>
                 </div>
@@ -515,7 +515,7 @@ export function PositionManageDialog({
               </div>
               {predictedValues.newLtv > 82 && (
                 <div className="text-xs text-red-400 mt-2">
-                  警告：新 LTV 超过最大值（82%），可能会被清算！
+                  LTV 将超过清算线，操作风险极高！
                 </div>
               )}
             </div>

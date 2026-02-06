@@ -38,7 +38,7 @@ export function PositionFilters({
           <SelectValue placeholder="抵押品" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__all__">全部抵押品</SelectItem>
+          <SelectItem value="__all__">全部</SelectItem>
           {collateralTypes.map((t) => (
             <SelectItem key={t} value={t}>{t}</SelectItem>
           ))}
@@ -50,7 +50,7 @@ export function PositionFilters({
           <SelectValue placeholder="债务" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__all__">全部债务</SelectItem>
+          <SelectItem value="__all__">全部</SelectItem>
           {debtTypes.map((t) => (
             <SelectItem key={t} value={t}>{t}</SelectItem>
           ))}
@@ -62,10 +62,10 @@ export function PositionFilters({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="ltv-desc">健康度 ↓ (高风险优先)</SelectItem>
-          <SelectItem value="ltv-asc">健康度 ↑ (低风险优先)</SelectItem>
-          <SelectItem value="collateral-desc">抵押品 ↓</SelectItem>
-          <SelectItem value="debt-desc">债务 ↓</SelectItem>
+          <SelectItem value="ltv-desc">风险 高→低</SelectItem>
+          <SelectItem value="ltv-asc">风险 低→高</SelectItem>
+          <SelectItem value="collateral-desc">抵押品 多→少</SelectItem>
+          <SelectItem value="debt-desc">债务 多→少</SelectItem>
         </SelectContent>
       </Select>
     </div>

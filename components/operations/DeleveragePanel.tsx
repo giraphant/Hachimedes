@@ -152,7 +152,7 @@ export function DeleveragePanel({ positionInfo, vaultConfig, selectedPositionId,
       await connection.confirmTransaction(signature, 'confirmed');
 
       toast({
-        title: 'Deleverage + Swap 执行成功！',
+        title: '减杠杆执行成功！',
         description: (
           <div className="mt-2 space-y-1">
             {positionId && <p>Position ID: {positionId}</p>}
@@ -187,13 +187,13 @@ export function DeleveragePanel({ positionInfo, vaultConfig, selectedPositionId,
     <div className="space-y-4">
       {positionInfo && (
         <div className="text-xs text-muted-foreground">
-          当前: {vaultConfig.name} #{selectedPositionId}
+          当前仓位: {vaultConfig.name} #{selectedPositionId}
         </div>
       )}
 
       <div className="p-4 rounded-lg bg-background/50 border border-border">
         <AmountInput
-          label={`Flash Borrow 数量 (${vaultConfig.collateralToken})`}
+          label={`提取数量 (${vaultConfig.collateralToken})`}
           value={amount}
           onChange={setAmount}
           maxAmount={maxAmount}
@@ -207,7 +207,7 @@ export function DeleveragePanel({ positionInfo, vaultConfig, selectedPositionId,
             { label: '抵押品', currentValue: `${positionInfo.collateralAmountUi.toFixed(2)} ${vaultConfig.collateralToken}`, newValue: `${previewData.newCollateral.toFixed(2)} ${vaultConfig.collateralToken}` },
             { label: '债务', currentValue: `${positionInfo.debtAmountUi.toFixed(2)} ${vaultConfig.debtToken}`, newValue: `${previewData.newDebt.toFixed(2)} ${vaultConfig.debtToken}` },
           ]}
-          warning={previewData.exceedsMax ? `LTV 将超过最大值 ${vaultConfig.maxLtv}%` : undefined}
+          warning={previewData.exceedsMax ? `LTV 将超过安全上限 ${vaultConfig.maxLtv}%，请谨慎操作` : undefined}
         />
       )}
 
@@ -229,12 +229,12 @@ export function DeleveragePanel({ positionInfo, vaultConfig, selectedPositionId,
       {publicKey && amount && (
         <Alert variant="warning">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle className="text-xs">注意事项</AlertTitle>
+          <AlertTitle className="text-xs">风险提示</AlertTitle>
           <AlertDescription>
             <ul className="list-disc list-inside space-y-0.5 text-xs text-yellow-300/80">
-              <li>Flash Loan 原子操作，要么全部成功，要么全部失败</li>
-              <li>确保钱包有足够的 SOL 支付交易费（约 0.001-0.005 SOL）</li>
-              <li>交易不可逆，请仔细检查参数</li>
+              <li>原子交易: 全部成功或全部回滚，资金安全</li>
+              <li>请确保钱包持有足够 SOL 作为交易手续费</li>
+              <li>操作前请仔细核对参数，交易一经确认不可撤销</li>
             </ul>
           </AlertDescription>
         </Alert>

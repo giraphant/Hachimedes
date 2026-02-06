@@ -251,20 +251,20 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
         const signed = await signTransaction(result.transactions[0]);
         const sig = await connection.sendTransaction(signed, { skipPreflight: false, preflightCommitment: 'confirmed' });
         await connection.confirmTransaction(sig, 'confirmed');
-        toast({ title: 'Rebalance 成功！', description: `单笔原子交易: ${sig.slice(0, 8)}...` });
+        toast({ title: '再平衡成功！', description: `单笔原子交易: ${sig.slice(0, 8)}...` });
       } else {
         toast({ title: '请签名 2 个交易（Jito Bundle）' });
         const signed = [];
         for (const tx of result.transactions) signed.push(await signTransaction(tx));
         const bundleId = await sendJitoMultiTxBundle(connection, signed);
-        toast({ title: 'Rebalance Bundle 已发送', description: `Bundle: ${bundleId.slice(0, 8)}...` });
+        toast({ title: '再平衡交易已发送', description: `Bundle: ${bundleId.slice(0, 8)}...` });
       }
 
       setAmount('');
       loadAllSameCollateralPositions(currentVaultConfig.collateralMint);
       onSuccess();
     } catch (e: any) {
-      toast({ title: 'Rebalance 失败', description: e.message, variant: 'destructive' });
+      toast({ title: '再平衡失败', description: e.message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -288,20 +288,20 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-8 w-2/3 mx-auto" />
-          <p className="text-center text-xs text-muted-foreground">正在搜索同抵押品池子的仓位...</p>
+          <p className="text-center text-xs text-muted-foreground">正在搜索同抵押品的池子...</p>
         </div>
       ) : rebalanceVaults.length < 2 ? (
         <div className="text-center py-4">
-          <p className="text-muted-foreground text-sm">需要在至少 2 个同抵押品池子中有仓位才能 Rebalance</p>
-          <p className="text-xs text-muted-foreground/70 mt-1">找到 {rebalanceVaults.length} 个有仓位的池子（{currentVaultConfig.collateralToken} 抵押品）</p>
+          <p className="text-muted-foreground text-sm">需要在至少 2 个同类池子中持有仓位</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">已发现 {rebalanceVaults.length} 个 {currentVaultConfig.collateralToken} 池子</p>
         </div>
       ) : (
         <div className="space-y-4">
           {/* Source */}
           <div className="space-y-2">
-            <Label className="text-foreground/80 text-sm">转出池（健康的）</Label>
+            <Label className="text-foreground/80 text-sm">转出池（减少抵押品）</Label>
             <Select value={sourceVaultId?.toString() ?? ''} onValueChange={(val) => setSourceVaultId(parseInt(val))}>
-              <SelectTrigger className="bg-secondary border-border text-sm"><SelectValue placeholder="选择转出池" /></SelectTrigger>
+              <SelectTrigger className="bg-secondary border-border text-sm"><SelectValue placeholder="选择来源池" /></SelectTrigger>
               <SelectContent>
                 {rebalanceVaults.filter(v => v.vaultId !== targetVaultId).map(({ vaultId: vid, position: pos }) => {
                   const vc = getVaultConfig(vid);
@@ -313,9 +313,9 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
 
           {/* Target */}
           <div className="space-y-2">
-            <Label className="text-foreground/80 text-sm">转入池（需要补充的）</Label>
+            <Label className="text-foreground/80 text-sm">转入池（增加抵押品）</Label>
             <Select value={targetVaultId?.toString() ?? ''} onValueChange={(val) => setTargetVaultId(parseInt(val))}>
-              <SelectTrigger className="bg-secondary border-border text-sm"><SelectValue placeholder="选择转入池" /></SelectTrigger>
+              <SelectTrigger className="bg-secondary border-border text-sm"><SelectValue placeholder="选择目标池" /></SelectTrigger>
               <SelectContent>
                 {rebalanceVaults.filter(v => v.vaultId !== sourceVaultId).map(({ vaultId: vid, position: pos }) => {
                   const vc = getVaultConfig(vid);
@@ -328,7 +328,7 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
           {/* Amount */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-foreground/80 text-sm">转移数量 ({currentVaultConfig.collateralToken})</Label>
+              <Label className="text-foreground/80 text-sm">转移数量</Label>
               {recommendedAmount != null && (
                 <button
                   type="button"
@@ -336,24 +336,27 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
                   className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
                 >
                   <Sparkles className="h-3 w-3" />
-                  推荐: {recommendedAmount.toFixed(2)}
+                  智能推荐: {recommendedAmount.toFixed(2)}
                 </button>
               )}
             </div>
-            <Input type="number" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="bg-background border-border text-foreground" step="0.01" />
+            <div className="relative">
+              <Input type="number" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="bg-background border-border text-foreground pr-16" step="0.01" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{currentVaultConfig.collateralToken}</span>
+            </div>
           </div>
 
           {/* Preview */}
           {rebalancePreview && (
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="p-3 rounded-lg bg-secondary border border-border">
-                <div className="text-xs text-muted-foreground mb-1">转出池 LTV</div>
+                <div className="text-xs text-muted-foreground mb-1">来源池 LTV 变化</div>
                 <div className={`font-bold ${rebalancePreview.sourceLtv > 85 ? 'text-red-400' : rebalancePreview.sourceLtv > 75 ? 'text-yellow-400' : 'text-green-400'}`}>
                   {allPositions[sourceVaultId!]?.ltv?.toFixed(1) ?? '?'}% → {rebalancePreview.sourceLtv === Infinity ? '∞' : rebalancePreview.sourceLtv.toFixed(1)}%
                 </div>
               </div>
               <div className="p-3 rounded-lg bg-secondary border border-border">
-                <div className="text-xs text-muted-foreground mb-1">转入池 LTV</div>
+                <div className="text-xs text-muted-foreground mb-1">目标池 LTV 变化</div>
                 <div className={`font-bold ${rebalancePreview.targetLtv > 85 ? 'text-red-400' : rebalancePreview.targetLtv > 75 ? 'text-yellow-400' : 'text-green-400'}`}>
                   {allPositions[targetVaultId!]?.ltv?.toFixed(1) ?? '?'}% → {rebalancePreview.targetLtv.toFixed(1)}%
                 </div>
@@ -371,7 +374,7 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
             {isLoading ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" />执行中...</>
             ) : (
-              <><ArrowRightLeft className="mr-2 h-4 w-4" />执行 Rebalance（跨池平衡）</>
+              <><ArrowRightLeft className="mr-2 h-4 w-4" />执行跨池再平衡</>
             )}
           </Button>
         </div>

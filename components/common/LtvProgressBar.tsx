@@ -22,7 +22,7 @@ export function LtvProgressBar({ ltv, maxLtv, liquidationLtv, previewLtv }: LtvP
   return (
     <div className="space-y-3">
       <div className="flex items-end justify-between">
-        <span className="text-sm text-muted-foreground">清算阈线(LTV)</span>
+        <span className="text-sm text-muted-foreground">健康度 (LTV)</span>
         <div className="flex items-center gap-2">
           <div className={cn('text-4xl font-bold', getColor(ltv))}>
             {ltv.toFixed(1)}%
@@ -60,7 +60,7 @@ export function LtvProgressBar({ ltv, maxLtv, liquidationLtv, previewLtv }: LtvP
 
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>{ltv.toFixed(1)}%</span>
-        <span>清算:{liquidationLtv}%</span>
+        <span>清算线 {liquidationLtv}%</span>
       </div>
     </div>
   );

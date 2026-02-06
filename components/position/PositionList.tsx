@@ -126,7 +126,7 @@ export function PositionList({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <CardTitle className="text-foreground text-lg">我的仓位</CardTitle>
+            <CardTitle className="text-foreground text-lg">仓位总览</CardTitle>
             {positions.length > 0 && (
               <Badge variant="secondary" className="text-xs">
                 {positions.length}
@@ -143,12 +143,12 @@ export function PositionList({
             {isFinding ? (
               <>
                 <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                扫描中
+                扫描中...
               </>
             ) : (
               <>
                 <RefreshCw className="mr-1 h-3 w-3" />
-                重新扫描
+                刷新
               </>
             )}
           </Button>
@@ -159,11 +159,11 @@ export function PositionList({
             {isBackgroundScanning && (
               <span className="flex items-center gap-1 text-blue-400">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                后台扫描中
+                正在同步...
               </span>
             )}
             {lastScanned && (
-              <span>上次扫描: {formatCacheAge(lastScanned)}</span>
+              <span>最后同步: {formatCacheAge(lastScanned)}</span>
             )}
           </div>
         )}
@@ -192,7 +192,7 @@ export function PositionList({
                 <Skeleton className="h-4 w-16" />
               </div>
             ))}
-            <p className="text-center text-xs text-muted-foreground py-2">加载仓位信息...</p>
+            <p className="text-center text-xs text-muted-foreground py-2">正在加载仓位...</p>
           </div>
         ) : filteredPositions.length > 0 ? (
           <div className="rounded-lg border border-border overflow-hidden">
@@ -266,24 +266,24 @@ export function PositionList({
           </div>
         ) : positions.length === 0 ? (
           <div className="text-center py-6">
-            <p className="text-muted-foreground mb-2">未找到仓位</p>
+            <p className="text-muted-foreground mb-2">暂无仓位</p>
             <p className="text-xs text-muted-foreground/70">
-              点击"自动查找"搜索，或手动输入 Position ID
+              点击上方「刷新」扫描，或在下方手动输入
             </p>
           </div>
         ) : (
           <div className="text-center py-4">
-            <p className="text-muted-foreground text-sm">无匹配的仓位</p>
+            <p className="text-muted-foreground text-sm">无匹配结果</p>
           </div>
         )}
 
         <div className="pt-2">
           <Separator className="mb-3" />
-          <Label className="text-muted-foreground text-xs mb-2 block">手动加载仓位</Label>
+          <Label className="text-muted-foreground text-xs mb-2 block">手动添加</Label>
           <div className="flex items-center gap-2">
             <Select value={manualVaultId} onValueChange={setManualVaultId}>
               <SelectTrigger className="w-auto bg-secondary border-border text-xs h-8">
-                <SelectValue placeholder="Vault" />
+                <SelectValue placeholder="选择池子" />
               </SelectTrigger>
               <SelectContent className="max-h-64">
                 {getAvailableVaults().map((vault) => (
@@ -295,13 +295,13 @@ export function PositionList({
             </Select>
             <Input
               type="number"
-              placeholder="Position ID"
+              placeholder="仓位 ID"
               value={manualPositionId}
               onChange={(e) => setManualPositionId(e.target.value)}
               className="w-28 bg-secondary border-border text-xs h-8"
             />
             <Button onClick={handleManualLoad} size="sm" variant="outline" className="text-xs h-8">
-              加载
+              添加
             </Button>
           </div>
         </div>
