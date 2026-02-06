@@ -103,7 +103,7 @@ export async function buildLeverageJitoBundle(params: LeverageJitoBundleParams) 
         slippageBps,
         dexes: preferredDexes,
         onlyDirectRoutes,
-        restrictIntermediateTokens: true,
+        restrictIntermediateTokens: false,
         maxAccounts,
       });
     } else {
@@ -114,7 +114,7 @@ export async function buildLeverageJitoBundle(params: LeverageJitoBundleParams) 
         amount: borrowAmountRaw,
         slippageBps,
         onlyDirectRoutes,
-        restrictIntermediateTokens: true,
+        restrictIntermediateTokens: false,
         maxAccounts,
       });
     }

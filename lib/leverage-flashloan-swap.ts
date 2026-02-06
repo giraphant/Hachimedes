@@ -107,7 +107,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
         slippageBps,
         dexes: preferredDexes,
         onlyDirectRoutes: onlyDirectRoutes,
-        restrictIntermediateTokens: true,
+        restrictIntermediateTokens: false,
         maxAccounts,
       });
     } else {
@@ -119,7 +119,7 @@ export async function buildLeverageFlashLoanSwap(params: LeverageFlashLoanSwapPa
         amount: flashLoanAmountRaw,
         slippageBps,
         onlyDirectRoutes: onlyDirectRoutes,
-        restrictIntermediateTokens: true,
+        restrictIntermediateTokens: false,
         maxAccounts,
       });
     }

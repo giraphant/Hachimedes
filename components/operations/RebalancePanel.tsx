@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { Loader2, ArrowRightLeft, AlertTriangle } from 'lucide-react';
+import { Loader2, ArrowRightLeft, AlertTriangle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,6 +50,66 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
       .filter(([, pos]) => pos !== null)
       .map(([vid, pos]) => ({ vaultId: parseInt(vid), position: pos! }));
   }, [allPositions]);
+
+  // Auto-select source (lowest LTV) and target (highest LTV) when positions change
+  useEffect(() => {
+    if (rebalanceVaults.length < 2) return;
+    const withLtv = rebalanceVaults.filter(v => v.position.ltv != null && v.position.debtAmountUi > 0);
+    if (withLtv.length < 2) return;
+    const sorted = [...withLtv].sort((a, b) => (a.position.ltv ?? 0) - (b.position.ltv ?? 0));
+    const source = sorted[0]; // lowest LTV = healthiest
+    const target = sorted[sorted.length - 1]; // highest LTV = most needy
+    if (source.vaultId !== target.vaultId) {
+      setSourceVaultId(source.vaultId);
+      setTargetVaultId(target.vaultId);
+    }
+  }, [rebalanceVaults]);
+
+  // Calculate optimal transfer amount that equalizes LTV between source and target
+  const recommendedAmount = useMemo(() => {
+    if (!sourceVaultId || !targetVaultId) return null;
+    const sourcePos = allPositions[sourceVaultId];
+    const targetPos = allPositions[targetVaultId];
+    if (!sourcePos || !targetPos) return null;
+    if (!sourcePos.oraclePrice || !targetPos.oraclePrice) return null;
+    if (sourcePos.debtAmountUi <= 0 && targetPos.debtAmountUi <= 0) return null;
+
+    const sourceDebtPrice = sourcePos.debtPrice ?? 1;
+    const targetDebtPrice = targetPos.debtPrice ?? 1;
+
+    // A = source debt value in collateral units
+    // B = target debt value in collateral units
+    const A = (sourcePos.debtAmountUi * sourceDebtPrice) / sourcePos.oraclePrice;
+    const B = (targetPos.debtAmountUi * targetDebtPrice) / targetPos.oraclePrice;
+
+    if (A + B === 0) return null;
+
+    // Solve: A / (sourceCol - x) = B / (targetCol + x)
+    // x = (B * sourceCol - A * targetCol) / (A + B)
+    const x = (B * sourcePos.collateralAmountUi - A * targetPos.collateralAmountUi) / (A + B);
+
+    if (x <= 0) return null; // source already needs more than target
+    // Cap at 95% of source collateral to prevent over-withdrawal
+    const maxSafe = sourcePos.collateralAmountUi * 0.95;
+    const capped = Math.min(x, maxSafe);
+
+    // Verify result won't exceed maxLtv
+    const sourceConfig = getVaultConfig(sourceVaultId);
+    const newSourceCol = sourcePos.collateralAmountUi - capped;
+    if (newSourceCol > 0 && sourcePos.debtAmountUi > 0) {
+      const newLtv = ((sourcePos.debtAmountUi * sourceDebtPrice) / (newSourceCol * sourcePos.oraclePrice)) * 100;
+      if (newLtv > sourceConfig.maxLtv - 2) {
+        // Too risky, reduce amount to stay 2% below maxLtv
+        // newLtv = source.debt*debtPrice / ((source.col - x) * colPrice) * 100 = maxLtv - 2
+        // x = source.col - source.debt*debtPrice / ((maxLtv-2)/100 * colPrice)
+        const safeX = sourcePos.collateralAmountUi - (sourcePos.debtAmountUi * sourceDebtPrice) / ((sourceConfig.maxLtv - 2) / 100 * sourcePos.oraclePrice);
+        if (safeX <= 0) return null;
+        return Math.floor(safeX * 100) / 100; // round down to 2 decimals
+      }
+    }
+
+    return Math.floor(capped * 100) / 100; // round down to 2 decimals
+  }, [sourceVaultId, targetVaultId, allPositions]);
 
   // Load positions for same-collateral vaults
   const loadAllSameCollateralPositions = useCallback(async (collateralMint: string, forceRefresh = false) => {
@@ -267,7 +327,19 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
 
           {/* Amount */}
           <div className="space-y-2">
-            <Label className="text-foreground/80 text-sm">转移数量 ({currentVaultConfig.collateralToken})</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-foreground/80 text-sm">转移数量 ({currentVaultConfig.collateralToken})</Label>
+              {recommendedAmount != null && (
+                <button
+                  type="button"
+                  onClick={() => setAmount(recommendedAmount.toString())}
+                  className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  推荐: {recommendedAmount.toFixed(2)}
+                </button>
+              )}
+            </div>
             <Input type="number" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="bg-background border-border text-foreground" step="0.01" />
           </div>
 
