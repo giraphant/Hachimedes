@@ -24,7 +24,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { PositionCard } from './PositionCard';
 import { PositionFilters, SortKey } from './PositionFilters';
 import { PositionInfo } from '@/lib/position';
 import { VaultConfig, getAvailableVaults } from '@/lib/vaults';
@@ -41,14 +40,9 @@ interface PositionListProps {
   selectedPositionKey: string | null;
   isLoading: boolean;
   onSelectPosition: (vaultId: number, positionId: number) => void;
-  onManageCollateral: (vaultId: number, positionId: number) => void;
-  onManageDebt: (vaultId: number, positionId: number) => void;
   onFindPositions: () => void;
   isFinding: boolean;
   onManualLoad: (vaultId: number, positionId: number) => void;
-  previewLtv?: number;
-  previewCollateral?: number;
-  previewDebt?: number;
   lastScanned?: number | null;
   isBackgroundScanning?: boolean;
 }
@@ -72,14 +66,9 @@ export function PositionList({
   selectedPositionKey,
   isLoading,
   onSelectPosition,
-  onManageCollateral,
-  onManageDebt,
   onFindPositions,
   isFinding,
   onManualLoad,
-  previewLtv,
-  previewCollateral,
-  previewDebt,
   lastScanned,
   isBackgroundScanning,
 }: PositionListProps) {
@@ -287,27 +276,6 @@ export function PositionList({
             <p className="text-muted-foreground text-sm">无匹配的仓位</p>
           </div>
         )}
-
-        {/* Selected position detail */}
-        {selectedPositionKey && filteredPositions.length > 0 && (() => {
-          const entry = filteredPositions.find(
-            (e) => `${e.vaultConfig.id}-${e.position.positionId}` === selectedPositionKey
-          );
-          if (!entry) return null;
-          return (
-            <PositionCard
-              position={entry.position}
-              vaultConfig={entry.vaultConfig}
-              selected={true}
-              onSelect={() => {}}
-              onManageCollateral={() => onManageCollateral(entry.vaultConfig.id, entry.position.positionId)}
-              onManageDebt={() => onManageDebt(entry.vaultConfig.id, entry.position.positionId)}
-              previewLtv={previewLtv}
-              previewCollateral={previewCollateral}
-              previewDebt={previewDebt}
-            />
-          );
-        })()}
 
         <div className="pt-2">
           <Separator className="mb-3" />

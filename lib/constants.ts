@@ -92,7 +92,7 @@ export const KNOWN_MINTS: Record<string, { symbol: string; decimals: number }> =
   'AvZZF1YaZDziPY2RCK4oJrRVrbN3mTD9NL24hPeaZeUj': { symbol: 'syrupUSDC', decimals: 6 },
   '5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm': { symbol: 'INF', decimals: 9 },
   'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN': { symbol: 'JUP', decimals: 9 },
-  '7GxATsNMnaC88vdwd2t3mwrFuQwwGvmYPrUQ4D6FotXk': { symbol: 'jlJUPUSD', decimals: 9 },
+  '7GxATsNMnaC88vdwd2t3mwrFuQwwGvmYPrUQ4D6FotXk': { symbol: 'JUICED', decimals: 9 },
   'CtzPWv73Sn1dMGVU3ZtLv9yWSyUAanBni19YWDaznnkn': { symbol: 'xBTC', decimals: 8 },
   'LBTCgU4b3wsFKsPwBn1rRZDx5DoFutM6RPiEt1TPDsY': { symbol: 'LBTC', decimals: 8 },
   '59obFNBzyTBGowrkif5uK7ojS58vsuWz3ZCvg6tfZAGw': { symbol: 'PST', decimals: 6 },

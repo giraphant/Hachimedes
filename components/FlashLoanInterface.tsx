@@ -18,6 +18,7 @@ import {
   CachedPosition,
 } from '@/lib/position-cache';
 import { PositionList } from './position/PositionList';
+import { PositionCard } from './position/PositionCard';
 import { OperationTabs } from './operations/OperationTabs';
 import { PositionManageDialog } from './PositionManageDialog';
 
@@ -393,33 +394,41 @@ export function FlashLoanInterface() {
                 selectedPositionKey={selectedKey}
                 isLoading={isLoadingPositions}
                 onSelectPosition={(vaultId, positionId) => setSelectedKey(`${vaultId}-${positionId}`)}
-                onManageCollateral={(vaultId, positionId) => {
-                  const entry = positions.find((p) => p.vaultConfig.id === vaultId && p.position.positionId === positionId);
-                  if (entry) setManageDialog({ open: true, type: 'collateral', vaultId, positionId, positionInfo: entry.position });
-                }}
-                onManageDebt={(vaultId, positionId) => {
-                  const entry = positions.find((p) => p.vaultConfig.id === vaultId && p.position.positionId === positionId);
-                  if (entry) setManageDialog({ open: true, type: 'debt', vaultId, positionId, positionInfo: entry.position });
-                }}
                 onFindPositions={findPositions}
                 isFinding={isFinding}
                 onManualLoad={handleManualLoad}
-                previewLtv={preview?.ltv}
-                previewCollateral={preview?.collateral}
-                previewDebt={preview?.debt}
                 lastScanned={lastScanned}
                 isBackgroundScanning={isBackgroundScanning}
               />
 
-              {/* Right: Operation Tabs */}
-              <OperationTabs
-                positionInfo={selectedEntry?.position ?? null}
-                vaultConfig={selectedEntry?.vaultConfig ?? getVaultConfig(DEFAULT_VAULT_ID)}
-                selectedPositionId={selectedEntry?.position.positionId ?? null}
-                discoveredVaults={discoveredVaults}
-                onSuccess={refreshSelected}
-                onPreviewChange={setPreview}
-              />
+              {/* Right: Selected Position Detail + Operation Tabs */}
+              <div className="space-y-6">
+                {selectedEntry && (
+                  <PositionCard
+                    position={selectedEntry.position}
+                    vaultConfig={selectedEntry.vaultConfig}
+                    selected={true}
+                    onSelect={() => {}}
+                    onManageCollateral={() => {
+                      setManageDialog({ open: true, type: 'collateral', vaultId: selectedEntry.vaultConfig.id, positionId: selectedEntry.position.positionId, positionInfo: selectedEntry.position });
+                    }}
+                    onManageDebt={() => {
+                      setManageDialog({ open: true, type: 'debt', vaultId: selectedEntry.vaultConfig.id, positionId: selectedEntry.position.positionId, positionInfo: selectedEntry.position });
+                    }}
+                    previewLtv={preview?.ltv}
+                    previewCollateral={preview?.collateral}
+                    previewDebt={preview?.debt}
+                  />
+                )}
+                <OperationTabs
+                  positionInfo={selectedEntry?.position ?? null}
+                  vaultConfig={selectedEntry?.vaultConfig ?? getVaultConfig(DEFAULT_VAULT_ID)}
+                  selectedPositionId={selectedEntry?.position.positionId ?? null}
+                  discoveredVaults={discoveredVaults}
+                  onSuccess={refreshSelected}
+                  onPreviewChange={setPreview}
+                />
+              </div>
             </div>
           </div>
         )}
