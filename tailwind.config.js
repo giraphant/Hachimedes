@@ -49,6 +49,37 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Operation colors
+        leverage: {
+          DEFAULT: "hsl(var(--leverage))",
+          foreground: "hsl(var(--leverage-foreground))",
+        },
+        deleverage: {
+          DEFAULT: "hsl(var(--deleverage))",
+          foreground: "hsl(var(--deleverage-foreground))",
+        },
+        rebalance: {
+          DEFAULT: "hsl(var(--rebalance))",
+          foreground: "hsl(var(--rebalance-foreground))",
+        },
+        // Status colors
+        healthy: "hsl(var(--healthy))",
+        warning: "hsl(var(--warning))",
+        danger: "hsl(var(--danger))",
+        info: "hsl(var(--info))",
+        // Asset colors
+        collateral: "hsl(var(--collateral))",
+        debt: "hsl(var(--debt))",
+      },
+      fontFamily: {
+        sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+      },
+      boxShadow: {
+        'glow-leverage': '0 0 20px hsl(var(--leverage) / 0.3)',
+        'glow-deleverage': '0 0 20px hsl(var(--deleverage) / 0.3)',
+        'glow-rebalance': '0 0 20px hsl(var(--rebalance) / 0.3)',
+        'glow-info': '0 0 20px hsl(var(--info) / 0.2)',
       },
       borderRadius: {
         lg: "var(--radius)",

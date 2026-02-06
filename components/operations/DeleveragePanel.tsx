@@ -157,7 +157,7 @@ export function DeleveragePanel({ positionInfo, vaultConfig, selectedPositionId,
           <div className="mt-2 space-y-1">
             {positionId && <p>Position ID: {positionId}</p>}
             <p>交易签名: {signature.slice(0, 8)}...{signature.slice(-8)}</p>
-            <a href={`https://solscan.io/tx/${signature}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-xs">在 Solscan 上查看</a>
+            <a href={`https://solscan.io/tx/${signature}`} target="_blank" rel="noopener noreferrer" className="text-info hover:underline text-xs">在 Solscan 上查看</a>
           </div>
         ),
       });
@@ -181,7 +181,7 @@ export function DeleveragePanel({ positionInfo, vaultConfig, selectedPositionId,
     }
   }, [publicKey, signTransaction, amount, selectedPositionId, settings, vaultConfig, connection, positionInfo, toast, onSuccess]);
 
-  const ltvColor = (v: number) => v < 70 ? 'text-green-400' : v < vaultConfig.maxLtv ? 'text-yellow-400' : 'text-red-400';
+  const ltvColor = (v: number) => v < 70 ? 'text-healthy' : v < vaultConfig.maxLtv ? 'text-warning' : 'text-danger';
 
   return (
     <div className="space-y-4">
@@ -216,7 +216,7 @@ export function DeleveragePanel({ positionInfo, vaultConfig, selectedPositionId,
       <Button
         onClick={handleExecute}
         disabled={!publicKey || isLoading || !amount || selectedPositionId === null}
-        className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+        className="w-full bg-deleverage hover:bg-deleverage/90 text-deleverage-foreground shadow-glow-deleverage"
         size="lg"
       >
         {isLoading ? (
@@ -231,7 +231,7 @@ export function DeleveragePanel({ positionInfo, vaultConfig, selectedPositionId,
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle className="text-xs">风险提示</AlertTitle>
           <AlertDescription>
-            <ul className="list-disc list-inside space-y-0.5 text-xs text-yellow-300/80">
+            <ul className="list-disc list-inside space-y-0.5 text-xs text-warning/80">
               <li>原子交易: 全部成功或全部回滚，资金安全</li>
               <li>请确保钱包持有足够 SOL 作为交易手续费</li>
               <li>操作前请仔细核对参数，交易一经确认不可撤销</li>

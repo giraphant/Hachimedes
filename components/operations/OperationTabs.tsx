@@ -32,21 +32,21 @@ export function OperationTabs({ positionInfo, vaultConfig, selectedPositionId, d
           <TabsList className="grid w-full grid-cols-3 bg-muted">
             <TabsTrigger
               value="leverage"
-              className="gap-2 data-[state=active]:bg-cyan-500/10 data-[state=active]:text-cyan-500 data-[state=active]:shadow-none"
+              className="gap-2 data-[state=active]:bg-leverage/10 data-[state=active]:text-leverage data-[state=active]:shadow-none"
             >
               <TrendingUp className="h-4 w-4 flex-shrink-0" />
               <span className="font-semibold text-sm">加杠杆</span>
             </TabsTrigger>
             <TabsTrigger
               value="deleverage"
-              className="gap-2 data-[state=active]:bg-purple-500/10 data-[state=active]:text-purple-500 data-[state=active]:shadow-none"
+              className="gap-2 data-[state=active]:bg-deleverage/10 data-[state=active]:text-deleverage data-[state=active]:shadow-none"
             >
               <TrendingDown className="h-4 w-4 flex-shrink-0" />
               <span className="font-semibold text-sm">减杠杆</span>
             </TabsTrigger>
             <TabsTrigger
               value="rebalance"
-              className="gap-2 data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-500 data-[state=active]:shadow-none"
+              className="gap-2 data-[state=active]:bg-rebalance/10 data-[state=active]:text-rebalance data-[state=active]:shadow-none"
             >
               <ArrowRightLeft className="h-4 w-4 flex-shrink-0" />
               <span className="font-semibold text-sm">再平衡</span>

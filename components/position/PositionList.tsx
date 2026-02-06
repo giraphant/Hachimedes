@@ -50,10 +50,10 @@ interface PositionListProps {
 function LtvBadge({ ltv, maxLtv }: { ltv: number; maxLtv: number }) {
   const color =
     ltv < 70
-      ? 'bg-green-500/15 text-green-400 border-green-500/30'
+      ? 'bg-healthy/15 text-healthy border-healthy/30'
       : ltv < maxLtv
-      ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
-      : 'bg-red-500/15 text-red-400 border-red-500/30';
+      ? 'bg-warning/15 text-warning border-warning/30'
+      : 'bg-danger/15 text-danger border-danger/30';
   return (
     <Badge variant="outline" className={cn('font-mono text-xs tabular-nums', color)}>
       {ltv.toFixed(1)}%
@@ -157,7 +157,7 @@ export function PositionList({
         {(lastScanned || isBackgroundScanning) && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
             {isBackgroundScanning && (
-              <span className="flex items-center gap-1 text-blue-400">
+              <span className="flex items-center gap-1 text-info">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 正在同步...
               </span>
@@ -219,7 +219,7 @@ export function PositionList({
                       className={cn(
                         'cursor-pointer border-border/50 transition-colors',
                         isSelected
-                          ? 'bg-blue-500/10 hover:bg-blue-500/15'
+                          ? 'bg-info/10 hover:bg-info/15'
                           : 'hover:bg-muted/50'
                       )}
                     >
@@ -227,7 +227,7 @@ export function PositionList({
                         <div className="flex items-center gap-2">
                           <div className={cn(
                             'w-1.5 h-1.5 rounded-full flex-shrink-0',
-                            isSelected ? 'bg-blue-500' : 'bg-muted-foreground/40'
+                            isSelected ? 'bg-info' : 'bg-muted-foreground/40'
                           )} />
                           <div>
                             <div className="text-sm font-medium text-foreground">
@@ -243,7 +243,7 @@ export function PositionList({
                         <LtvBadge ltv={ltv} maxLtv={entry.vaultConfig.maxLtv} />
                       </TableCell>
                       <TableCell className="px-3 py-2.5 text-right">
-                        <div className="font-mono text-sm text-foreground">
+                        <div className="font-mono text-sm text-foreground tabular-nums">
                           {entry.position.collateralAmountUi.toFixed(2)}
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -251,7 +251,7 @@ export function PositionList({
                         </div>
                       </TableCell>
                       <TableCell className="px-3 py-2.5 text-right">
-                        <div className="font-mono text-sm text-foreground">
+                        <div className="font-mono text-sm text-foreground tabular-nums">
                           {entry.position.debtAmountUi.toFixed(2)}
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -267,7 +267,7 @@ export function PositionList({
         ) : positions.length === 0 ? (
           <div className="text-center py-6">
             <p className="text-muted-foreground mb-2">暂无仓位</p>
-            <p className="text-xs text-muted-foreground/70">
+            <p className="text-xs text-muted-foreground">
               点击上方「刷新」扫描，或在下方手动输入
             </p>
           </div>

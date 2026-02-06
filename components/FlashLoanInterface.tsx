@@ -325,13 +325,13 @@ export function FlashLoanInterface() {
   }, [publicKey]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b border-border">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Zap className="h-6 w-6 text-green-500" />
+              <Zap className="h-6 w-6 text-healthy" />
               <h1 className="text-2xl font-bold text-foreground">Hachimedes</h1>
             </div>
             <WalletButton />
@@ -346,8 +346,8 @@ export function FlashLoanInterface() {
             <Card className="border-border bg-card">
               <CardContent className="p-12 text-center space-y-6">
                 <div className="flex justify-center">
-                  <div className="rounded-full bg-green-500/10 p-4">
-                    <Zap className="h-12 w-12 text-green-500" />
+                  <div className="rounded-full bg-healthy/10 p-4">
+                    <Zap className="h-12 w-12 text-healthy" />
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -359,21 +359,21 @@ export function FlashLoanInterface() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6">
                   <Card className="bg-secondary border-border">
                     <CardContent className="p-4 text-center">
-                      <Zap className="h-8 w-8 text-cyan-400 mx-auto mb-2" />
+                      <Zap className="h-8 w-8 text-leverage mx-auto mb-2" />
                       <div className="font-semibold text-foreground mb-1">闪电借贷</div>
                       <div className="text-xs text-muted-foreground">零成本</div>
                     </CardContent>
                   </Card>
                   <Card className="bg-secondary border-border">
                     <CardContent className="p-4 text-center">
-                      <RefreshCw className="h-8 w-8 text-purple-400 mx-auto mb-2" />
+                      <RefreshCw className="h-8 w-8 text-deleverage mx-auto mb-2" />
                       <div className="font-semibold text-foreground mb-1">智能路由</div>
                       <div className="text-xs text-muted-foreground">Jupiter 聚合</div>
                     </CardContent>
                   </Card>
                   <Card className="bg-secondary border-border">
                     <CardContent className="p-4 text-center">
-                      <Target className="h-8 w-8 text-emerald-400 mx-auto mb-2" />
+                      <Target className="h-8 w-8 text-rebalance mx-auto mb-2" />
                       <div className="font-semibold text-foreground mb-1">一键执行</div>
                       <div className="text-xs text-muted-foreground">全部或回滚</div>
                     </CardContent>

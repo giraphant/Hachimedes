@@ -24,6 +24,24 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+
+    /* Operation colors */
+    --leverage: 192 91% 36%;
+    --leverage-foreground: 0 0% 100%;
+    --deleverage: 271 81% 56%;
+    --deleverage-foreground: 0 0% 100%;
+    --rebalance: 160 84% 39%;
+    --rebalance-foreground: 0 0% 100%;
+
+    /* Status colors */
+    --healthy: 142 71% 45%;
+    --warning: 48 96% 53%;
+    --danger: 0 84% 60%;
+    --info: 217 91% 60%;
+
+    /* Asset colors */
+    --collateral: 142 69% 58%;
+    --debt: 25 95% 53%;
   }
 
   .dark {
@@ -46,6 +64,24 @@
     --border: 217.2 32.6% 15%;
     --input: 217.2 32.6% 15%;
     --ring: 212.7 26.8% 83.9%;
+
+    /* Operation colors */
+    --leverage: 192 91% 36%;
+    --leverage-foreground: 0 0% 100%;
+    --deleverage: 271 81% 56%;
+    --deleverage-foreground: 0 0% 100%;
+    --rebalance: 160 84% 39%;
+    --rebalance-foreground: 0 0% 100%;
+
+    /* Status colors */
+    --healthy: 142 71% 45%;
+    --warning: 48 96% 53%;
+    --danger: 0 84% 60%;
+    --info: 217 91% 60%;
+
+    /* Asset colors */
+    --collateral: 142 69% 58%;
+    --debt: 25 95% 53%;
   }
 }
 

@@ -34,11 +34,11 @@ export function PositionCard({
   if (!selected) return null;
 
   return (
-    <div className="rounded-lg border-2 border-blue-500/50 bg-card p-4 space-y-4">
+    <div className="rounded-lg border-2 border-info/50 bg-card p-4 space-y-4 shadow-lg shadow-info/10">
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-blue-500" />
-          <span className="px-2 py-1 rounded bg-blue-950/50 text-blue-400 border border-blue-900/50">
+          <div className="w-2 h-2 rounded-full bg-info" />
+          <span className="px-2 py-1 rounded bg-info/10 text-info border border-info/20 font-mono">
             {vaultConfig.collateralToken}/{vaultConfig.debtToken} #{vaultConfig.id}
           </span>
         </div>
@@ -66,7 +66,7 @@ export function PositionCard({
             <div className="text-xs text-muted-foreground mb-2 text-center">抵押品</div>
             <Settings className="absolute top-0 right-1 h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
           </div>
-          <div className="flex items-center justify-center gap-1.5 text-2xl font-bold text-green-400 mb-1">
+          <div className="flex items-center justify-center gap-1.5 text-2xl font-bold font-mono text-collateral mb-1">
             <span>{position.collateralAmountUi.toFixed(2)}</span>
             {previewCollateral !== undefined && (
               <>
@@ -87,7 +87,7 @@ export function PositionCard({
             <div className="text-xs text-muted-foreground mb-2 text-center">债务</div>
             <Settings className="absolute top-0 right-1 h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground" />
           </div>
-          <div className="flex items-center justify-center gap-1.5 text-2xl font-bold text-orange-400 mb-1">
+          <div className="flex items-center justify-center gap-1.5 text-2xl font-bold font-mono text-debt mb-1">
             <span>{position.debtAmountUi.toFixed(2)}</span>
             {previewDebt !== undefined && (
               <>

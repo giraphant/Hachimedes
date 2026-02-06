@@ -10,28 +10,28 @@ interface LtvProgressBarProps {
 
 export function LtvProgressBar({ ltv, maxLtv, liquidationLtv, previewLtv }: LtvProgressBarProps) {
   const getColor = (value: number) =>
-    value < 70 ? 'text-green-400' : value < maxLtv ? 'text-yellow-400' : 'text-red-400';
+    value < 70 ? 'text-healthy' : value < maxLtv ? 'text-warning' : 'text-danger';
 
   const getBarColor = (value: number) =>
     value < 70
-      ? 'bg-gradient-to-r from-green-500 to-green-400'
+      ? 'bg-healthy'
       : value < maxLtv
-      ? 'bg-gradient-to-r from-yellow-500 to-yellow-400'
-      : 'bg-gradient-to-r from-red-500 to-red-400';
+      ? 'bg-warning'
+      : 'bg-danger';
 
   return (
     <div className="space-y-3">
       <div className="flex items-end justify-between">
         <span className="text-sm text-muted-foreground">健康度 (LTV)</span>
         <div className="flex items-center gap-2">
-          <div className={cn('text-4xl font-bold', getColor(ltv))}>
+          <div className={cn('text-4xl font-bold font-mono tabular-nums', getColor(ltv))}>
             {ltv.toFixed(1)}%
             <span className="sr-only">当前 LTV {ltv.toFixed(1)}%</span>
           </div>
           {previewLtv !== undefined && (
             <>
               <ArrowRight className="h-5 w-5 text-muted-foreground/40" />
-              <div className={cn('text-4xl font-bold', getColor(previewLtv))}>
+              <div className={cn('text-4xl font-bold font-mono tabular-nums', getColor(previewLtv))}>
                 {previewLtv.toFixed(1)}%
                 <span className="sr-only">预测 LTV {previewLtv.toFixed(1)}%</span>
               </div>
@@ -53,7 +53,7 @@ export function LtvProgressBar({ ltv, maxLtv, liquidationLtv, previewLtv }: LtvP
           style={{ width: `${Math.min(ltv, 100)}%` }}
         />
         <div
-          className="absolute inset-y-0 w-0.5 bg-red-500/50"
+          className="absolute inset-y-0 w-0.5 bg-danger/50"
           style={{ left: `${liquidationLtv}%` }}
         />
       </div>

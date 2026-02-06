@@ -278,7 +278,7 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between text-xs">
             <span>仓位数据缓存于 {Math.floor(positionCacheAge / (1000 * 60 * 60))} 小时前</span>
-            <button onClick={() => loadAllSameCollateralPositions(currentVaultConfig.collateralMint, true)} className="text-yellow-300 hover:text-yellow-100 underline cursor-pointer ml-2">刷新</button>
+            <button onClick={() => loadAllSameCollateralPositions(currentVaultConfig.collateralMint, true)} className="text-warning hover:text-warning/80 underline cursor-pointer ml-2">刷新</button>
           </AlertDescription>
         </Alert>
       )}
@@ -293,13 +293,13 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
       ) : rebalanceVaults.length < 2 ? (
         <div className="text-center py-4">
           <p className="text-muted-foreground text-sm">需要在至少 2 个同类池子中持有仓位</p>
-          <p className="text-xs text-muted-foreground/70 mt-1">已发现 {rebalanceVaults.length} 个 {currentVaultConfig.collateralToken} 池子</p>
+          <p className="text-xs text-muted-foreground mt-1">已发现 {rebalanceVaults.length} 个 {currentVaultConfig.collateralToken} 池子</p>
         </div>
       ) : (
         <div className="space-y-4">
           {/* Source */}
           <div className="space-y-2">
-            <Label className="text-foreground/80 text-sm">转出池（减少抵押品）</Label>
+            <Label className="text-muted-foreground">转出池（减少抵押品）</Label>
             <Select value={sourceVaultId?.toString() ?? ''} onValueChange={(val) => setSourceVaultId(parseInt(val))}>
               <SelectTrigger className="bg-secondary border-border text-sm"><SelectValue placeholder="选择来源池" /></SelectTrigger>
               <SelectContent>
@@ -313,7 +313,7 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
 
           {/* Target */}
           <div className="space-y-2">
-            <Label className="text-foreground/80 text-sm">转入池（增加抵押品）</Label>
+            <Label className="text-muted-foreground">转入池（增加抵押品）</Label>
             <Select value={targetVaultId?.toString() ?? ''} onValueChange={(val) => setTargetVaultId(parseInt(val))}>
               <SelectTrigger className="bg-secondary border-border text-sm"><SelectValue placeholder="选择目标池" /></SelectTrigger>
               <SelectContent>
@@ -328,12 +328,12 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
           {/* Amount */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-foreground/80 text-sm">转移数量</Label>
+              <Label className="text-muted-foreground">转移数量</Label>
               {recommendedAmount != null && (
                 <button
                   type="button"
                   onClick={() => setAmount(recommendedAmount.toString())}
-                  className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                  className="flex items-center gap-1 text-xs text-rebalance hover:text-rebalance/80 transition-colors cursor-pointer"
                 >
                   <Sparkles className="h-3 w-3" />
                   智能推荐: {recommendedAmount.toFixed(2)}
@@ -351,13 +351,13 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="p-3 rounded-lg bg-secondary border border-border">
                 <div className="text-xs text-muted-foreground mb-1">来源池 LTV 变化</div>
-                <div className={`font-bold ${rebalancePreview.sourceLtv > 85 ? 'text-red-400' : rebalancePreview.sourceLtv > 75 ? 'text-yellow-400' : 'text-green-400'}`}>
+                <div className={`font-bold font-mono tabular-nums ${rebalancePreview.sourceLtv > 85 ? 'text-danger' : rebalancePreview.sourceLtv > 75 ? 'text-warning' : 'text-healthy'}`}>
                   {allPositions[sourceVaultId!]?.ltv?.toFixed(1) ?? '?'}% → {rebalancePreview.sourceLtv === Infinity ? '∞' : rebalancePreview.sourceLtv.toFixed(1)}%
                 </div>
               </div>
               <div className="p-3 rounded-lg bg-secondary border border-border">
                 <div className="text-xs text-muted-foreground mb-1">目标池 LTV 变化</div>
-                <div className={`font-bold ${rebalancePreview.targetLtv > 85 ? 'text-red-400' : rebalancePreview.targetLtv > 75 ? 'text-yellow-400' : 'text-green-400'}`}>
+                <div className={`font-bold font-mono tabular-nums ${rebalancePreview.targetLtv > 85 ? 'text-danger' : rebalancePreview.targetLtv > 75 ? 'text-warning' : 'text-healthy'}`}>
                   {allPositions[targetVaultId!]?.ltv?.toFixed(1) ?? '?'}% → {rebalancePreview.targetLtv.toFixed(1)}%
                 </div>
               </div>
@@ -368,7 +368,7 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
           <Button
             onClick={handleRebalance}
             disabled={!publicKey || isLoading || !sourceVaultId || !targetVaultId || !amount}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="w-full bg-rebalance hover:bg-rebalance/90 text-rebalance-foreground shadow-glow-rebalance"
             size="lg"
           >
             {isLoading ? (

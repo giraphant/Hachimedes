@@ -23,9 +23,9 @@ export function PreviewCard({ rows, warning }: PreviewCardProps) {
           <div key={i} className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">{row.label}</span>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-foreground/80">{row.currentValue}</span>
-              <ArrowRight className="h-3 w-3 text-muted-foreground/50" />
-              <span className={cn('font-mono', row.colorClass ?? 'text-foreground')}>
+              <span className="font-mono tabular-nums text-muted-foreground">{row.currentValue}</span>
+              <ArrowRight className="h-4 w-4 text-muted-foreground/50" />
+              <span className={cn('font-mono tabular-nums', row.colorClass ?? 'text-foreground')}>
                 {row.newValue}
               </span>
             </div>

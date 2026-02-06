@@ -27,9 +27,9 @@ export function AmountInput({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <Label className="text-foreground/80">{label}</Label>
+        <Label className="text-muted-foreground">{label}</Label>
         <div className="text-xs text-muted-foreground">
-          {maxLabel}: <span className="font-mono text-foreground">{maxAmount.toFixed(4)}</span>
+          {maxLabel}: <span className="font-mono tabular-nums text-foreground">{maxAmount.toFixed(4)}</span>
         </div>
       </div>
 

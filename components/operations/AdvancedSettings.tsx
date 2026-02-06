@@ -44,7 +44,7 @@ export function AdvancedSettings({
     <div className="flex items-center justify-between p-3 rounded-lg bg-secondary border border-border">
       <div className="flex items-center gap-2">
         <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-foreground/80">交易参数</span>
+        <span className="text-sm text-muted-foreground">交易参数</span>
       </div>
       <Popover>
         <PopoverTrigger asChild>
@@ -63,7 +63,7 @@ export function AdvancedSettings({
 
             {/* Slippage */}
             <div className="space-y-2">
-              <Label className="text-foreground/80 text-xs">滑点容忍度</Label>
+              <Label className="text-muted-foreground text-xs">滑点容忍度</Label>
               <div className="flex gap-1.5">
                 <Button type="button" variant={slippageBps === 5 ? 'default' : 'outline'} size="sm" onClick={() => onChange({ slippageBps: 5 })} className="flex-1 text-xs h-8 rounded-lg">0.05%</Button>
                 <Button type="button" variant={slippageBps === 10 ? 'default' : 'outline'} size="sm" onClick={() => onChange({ slippageBps: 10 })} className="flex-1 text-xs h-8 rounded-lg">0.1%</Button>
@@ -87,7 +87,7 @@ export function AdvancedSettings({
 
             {/* Mode */}
             <div className="space-y-2">
-              <Label className="text-foreground/80 text-xs">执行模式</Label>
+              <Label className="text-muted-foreground text-xs">执行模式</Label>
               <div className="flex gap-1.5">
                 <Button type="button" variant={!useJitoBundle ? 'default' : 'outline'} size="sm" onClick={() => onChange({ useJitoBundle: false })} className="flex-1 text-xs h-8">Flash Loan</Button>
                 <Button type="button" variant={useJitoBundle ? 'default' : 'outline'} size="sm" onClick={() => onChange({ useJitoBundle: true })} className="flex-1 text-xs h-8">Jito Bundle</Button>
@@ -97,7 +97,7 @@ export function AdvancedSettings({
             {/* Priority fee */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-foreground/80 text-xs">优先费用</Label>
+                <Label className="text-muted-foreground text-xs">优先费用</Label>
                 <span className="text-xs text-muted-foreground">
                   {priorityFee === 'default' && '默认'}
                   {priorityFee === 'fast' && '快速'}
@@ -116,7 +116,7 @@ export function AdvancedSettings({
             {/* Route type */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-foreground/80 text-xs">路由类型</Label>
+                <Label className="text-muted-foreground text-xs">路由类型</Label>
                 <span className="text-xs text-muted-foreground">{onlyDirectRoutes ? '直接' : '智能'}</span>
               </div>
               <div className="flex gap-1.5">
@@ -128,7 +128,7 @@ export function AdvancedSettings({
             {/* DEX selection */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-foreground/80 text-xs">DEX 偏好</Label>
+                <Label className="text-muted-foreground text-xs">DEX 偏好</Label>
                 <span className="text-xs text-muted-foreground">{selectedDexes.length === 0 ? '自动选择' : selectedDexes.length}</span>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
@@ -141,7 +141,7 @@ export function AdvancedSettings({
             {/* Max accounts */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-foreground/80 text-xs">最大账户数</Label>
+                <Label className="text-muted-foreground text-xs">最大账户数</Label>
                 <span className="text-xs text-muted-foreground">{maxAccounts}</span>
               </div>
               <div className="flex gap-1.5">
