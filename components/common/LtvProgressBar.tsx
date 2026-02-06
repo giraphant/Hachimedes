@@ -1,3 +1,4 @@
+import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LtvProgressBarProps {
@@ -21,25 +22,34 @@ export function LtvProgressBar({ ltv, maxLtv, liquidationLtv, previewLtv }: LtvP
   return (
     <div className="space-y-3">
       <div className="flex items-end justify-between">
-        <span className="text-sm text-slate-400">清算阈线(LTV)</span>
+        <span className="text-sm text-muted-foreground">清算阈线(LTV)</span>
         <div className="flex items-center gap-2">
           <div className={cn('text-4xl font-bold', getColor(ltv))}>
             {ltv.toFixed(1)}%
+            <span className="sr-only">当前 LTV {ltv.toFixed(1)}%</span>
           </div>
           {previewLtv !== undefined && (
             <>
-              <span className="text-2xl text-slate-600">→</span>
+              <ArrowRight className="h-5 w-5 text-muted-foreground/40" />
               <div className={cn('text-4xl font-bold', getColor(previewLtv))}>
                 {previewLtv.toFixed(1)}%
+                <span className="sr-only">预测 LTV {previewLtv.toFixed(1)}%</span>
               </div>
             </>
           )}
         </div>
       </div>
 
-      <div className="relative h-3 bg-slate-800 rounded-full overflow-hidden">
+      <div
+        className="relative h-3 bg-muted rounded-full overflow-hidden"
+        role="progressbar"
+        aria-valuenow={ltv}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`LTV ${ltv.toFixed(1)}%，清算线 ${liquidationLtv}%`}
+      >
         <div
-          className={cn('absolute inset-y-0 left-0 rounded-full transition-all', getBarColor(ltv))}
+          className={cn('absolute inset-y-0 left-0 rounded-full transition-all ease-out', getBarColor(ltv))}
           style={{ width: `${Math.min(ltv, 100)}%` }}
         />
         <div
@@ -48,7 +58,7 @@ export function LtvProgressBar({ ltv, maxLtv, liquidationLtv, previewLtv }: LtvP
         />
       </div>
 
-      <div className="flex justify-between text-xs text-slate-500">
+      <div className="flex justify-between text-xs text-muted-foreground">
         <span>{ltv.toFixed(1)}%</span>
         <span>清算:{liquidationLtv}%</span>
       </div>

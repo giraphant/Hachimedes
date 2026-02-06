@@ -2,10 +2,12 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { Loader2, ArrowRightLeft } from 'lucide-react';
+import { Loader2, ArrowRightLeft, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -209,32 +211,37 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
   }, [publicKey, signTransaction, sourceVaultId, targetVaultId, amount, allPositions, currentVaultConfig, connection, toast, onSuccess, loadAllSameCollateralPositions]);
 
   return (
-    <div className="space-y-4 p-4 rounded-lg bg-slate-950/50 border border-slate-800">
+    <div className="space-y-4 p-4 rounded-lg bg-background/50 border border-border">
       {/* Cache age warning */}
       {positionCacheAge && positionCacheAge > 60 * 60 * 1000 && (
-        <div className="flex items-center justify-between p-2 rounded bg-yellow-900/20 border border-yellow-700/30 text-xs">
-          <span className="text-yellow-400">仓位数据缓存于 {Math.floor(positionCacheAge / (1000 * 60 * 60))} 小时前</span>
-          <button onClick={() => loadAllSameCollateralPositions(currentVaultConfig.collateralMint, true)} className="text-yellow-300 hover:text-yellow-100 underline">刷新</button>
-        </div>
+        <Alert variant="warning" className="py-2">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between text-xs">
+            <span>仓位数据缓存于 {Math.floor(positionCacheAge / (1000 * 60 * 60))} 小时前</span>
+            <button onClick={() => loadAllSameCollateralPositions(currentVaultConfig.collateralMint, true)} className="text-yellow-300 hover:text-yellow-100 underline cursor-pointer ml-2">刷新</button>
+          </AlertDescription>
+        </Alert>
       )}
 
       {isLoadingAllPositions ? (
-        <div className="flex items-center justify-center gap-2 text-slate-400 py-4">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm">正在搜索同抵押品池子的仓位...</span>
+        <div className="space-y-3 py-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-8 w-2/3 mx-auto" />
+          <p className="text-center text-xs text-muted-foreground">正在搜索同抵押品池子的仓位...</p>
         </div>
       ) : rebalanceVaults.length < 2 ? (
         <div className="text-center py-4">
-          <p className="text-slate-400 text-sm">需要在至少 2 个同抵押品池子中有仓位才能 Rebalance</p>
-          <p className="text-xs text-slate-500 mt-1">找到 {rebalanceVaults.length} 个有仓位的池子（{currentVaultConfig.collateralToken} 抵押品）</p>
+          <p className="text-muted-foreground text-sm">需要在至少 2 个同抵押品池子中有仓位才能 Rebalance</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">找到 {rebalanceVaults.length} 个有仓位的池子（{currentVaultConfig.collateralToken} 抵押品）</p>
         </div>
       ) : (
         <div className="space-y-4">
           {/* Source */}
           <div className="space-y-2">
-            <Label className="text-slate-300 text-sm">转出池（健康的）</Label>
+            <Label className="text-foreground/80 text-sm">转出池（健康的）</Label>
             <Select value={sourceVaultId?.toString() ?? ''} onValueChange={(val) => setSourceVaultId(parseInt(val))}>
-              <SelectTrigger className="bg-slate-900/70 border-slate-700 text-sm"><SelectValue placeholder="选择转出池" /></SelectTrigger>
+              <SelectTrigger className="bg-secondary border-border text-sm"><SelectValue placeholder="选择转出池" /></SelectTrigger>
               <SelectContent>
                 {rebalanceVaults.filter(v => v.vaultId !== targetVaultId).map(({ vaultId: vid, position: pos }) => {
                   const vc = getVaultConfig(vid);
@@ -246,9 +253,9 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
 
           {/* Target */}
           <div className="space-y-2">
-            <Label className="text-slate-300 text-sm">转入池（需要补充的）</Label>
+            <Label className="text-foreground/80 text-sm">转入池（需要补充的）</Label>
             <Select value={targetVaultId?.toString() ?? ''} onValueChange={(val) => setTargetVaultId(parseInt(val))}>
-              <SelectTrigger className="bg-slate-900/70 border-slate-700 text-sm"><SelectValue placeholder="选择转入池" /></SelectTrigger>
+              <SelectTrigger className="bg-secondary border-border text-sm"><SelectValue placeholder="选择转入池" /></SelectTrigger>
               <SelectContent>
                 {rebalanceVaults.filter(v => v.vaultId !== sourceVaultId).map(({ vaultId: vid, position: pos }) => {
                   const vc = getVaultConfig(vid);
@@ -260,21 +267,21 @@ export function RebalancePanel({ discoveredVaults, currentVaultConfig, onSuccess
 
           {/* Amount */}
           <div className="space-y-2">
-            <Label className="text-slate-300 text-sm">转移数量 ({currentVaultConfig.collateralToken})</Label>
-            <Input type="number" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="bg-slate-900 border-slate-700 text-white" step="0.01" />
+            <Label className="text-foreground/80 text-sm">转移数量 ({currentVaultConfig.collateralToken})</Label>
+            <Input type="number" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="bg-background border-border text-foreground" step="0.01" />
           </div>
 
           {/* Preview */}
           {rebalancePreview && (
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="p-3 rounded-lg bg-slate-900/30 border border-slate-700/40">
-                <div className="text-xs text-slate-500 mb-1">转出池 LTV</div>
+              <div className="p-3 rounded-lg bg-secondary border border-border">
+                <div className="text-xs text-muted-foreground mb-1">转出池 LTV</div>
                 <div className={`font-bold ${rebalancePreview.sourceLtv > 85 ? 'text-red-400' : rebalancePreview.sourceLtv > 75 ? 'text-yellow-400' : 'text-green-400'}`}>
                   {allPositions[sourceVaultId!]?.ltv?.toFixed(1) ?? '?'}% → {rebalancePreview.sourceLtv === Infinity ? '∞' : rebalancePreview.sourceLtv.toFixed(1)}%
                 </div>
               </div>
-              <div className="p-3 rounded-lg bg-slate-900/30 border border-slate-700/40">
-                <div className="text-xs text-slate-500 mb-1">转入池 LTV</div>
+              <div className="p-3 rounded-lg bg-secondary border border-border">
+                <div className="text-xs text-muted-foreground mb-1">转入池 LTV</div>
                 <div className={`font-bold ${rebalancePreview.targetLtv > 85 ? 'text-red-400' : rebalancePreview.targetLtv > 75 ? 'text-yellow-400' : 'text-green-400'}`}>
                   {allPositions[targetVaultId!]?.ltv?.toFixed(1) ?? '?'}% → {rebalancePreview.targetLtv.toFixed(1)}%
                 </div>

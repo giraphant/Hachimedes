@@ -34,7 +34,7 @@ export function PositionFilters({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Select value={selectedCollateral || '__all__'} onValueChange={(v) => onCollateralChange(v === '__all__' ? '' : v)}>
-        <SelectTrigger className="w-auto bg-slate-900/70 border-slate-700 text-xs h-8">
+        <SelectTrigger className="w-auto bg-secondary border-border text-xs h-8">
           <SelectValue placeholder="抵押品" />
         </SelectTrigger>
         <SelectContent>
@@ -46,7 +46,7 @@ export function PositionFilters({
       </Select>
 
       <Select value={selectedDebt || '__all__'} onValueChange={(v) => onDebtChange(v === '__all__' ? '' : v)}>
-        <SelectTrigger className="w-auto bg-slate-900/70 border-slate-700 text-xs h-8">
+        <SelectTrigger className="w-auto bg-secondary border-border text-xs h-8">
           <SelectValue placeholder="债务" />
         </SelectTrigger>
         <SelectContent>
@@ -58,7 +58,7 @@ export function PositionFilters({
       </Select>
 
       <Select value={sortKey} onValueChange={(v) => onSortChange(v as SortKey)}>
-        <SelectTrigger className="w-auto bg-slate-900/70 border-slate-700 text-xs h-8">
+        <SelectTrigger className="w-auto bg-secondary border-border text-xs h-8">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

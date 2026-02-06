@@ -2,8 +2,9 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { Loader2, Zap } from 'lucide-react';
+import { Loader2, Zap, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AmountInput } from '@/components/common/AmountInput';
 import { PreviewCard } from '@/components/common/PreviewCard';
 import { AdvancedSettings, AdvancedSettingsState } from './AdvancedSettings';
@@ -76,7 +77,7 @@ export function LeveragePanel({ positionInfo, vaultConfig, selectedPositionId, o
     if (!publicKey || !signTransaction || !amount || selectedPositionId === null) return;
 
     if (settings.onlyDirectRoutes) {
-      toast({ title: '⚠️ 使用直接路由', description: '直接路由可能导致较高磨损，请注意检查交易详情' });
+      toast({ title: '使用直接路由', description: '直接路由可能导致较高磨损，请注意检查交易详情' });
     }
 
     setIsLoading(true);
@@ -125,9 +126,9 @@ export function LeveragePanel({ positionInfo, vaultConfig, selectedPositionId, o
         if (positionInfo.oraclePrice) {
           const oraclePrice = positionInfo.oraclePrice;
           const deviation = ((tradePrice - oraclePrice) / oraclePrice) * 100;
-          priceWarning = `\n📊 预言机价格: $${oraclePrice.toFixed(4)}\n💱 交易价格: $${tradePrice.toFixed(4)}\n📉 价格偏差: ${deviation > 0 ? '+' : ''}${deviation.toFixed(2)}%\n⚠️ 请检查价格是否合理`;
+          priceWarning = `\n预言机价格: $${oraclePrice.toFixed(4)}\n交易价格: $${tradePrice.toFixed(4)}\n价格偏差: ${deviation > 0 ? '+' : ''}${deviation.toFixed(2)}%\n请检查价格是否合理`;
         } else {
-          priceWarning = `\n💱 交易价格: $${tradePrice.toFixed(4)} ${vaultConfig.debtToken}/${vaultConfig.collateralToken}\n⚠️ 请检查价格是否合理`;
+          priceWarning = `\n交易价格: $${tradePrice.toFixed(4)} ${vaultConfig.debtToken}/${vaultConfig.collateralToken}\n请检查价格是否合理`;
         }
       }
 
@@ -174,7 +175,7 @@ export function LeveragePanel({ positionInfo, vaultConfig, selectedPositionId, o
         if (settings.maxAccounts > 20) suggestions.push(`降低「最大账户数」到 ${settings.maxAccounts === 32 ? 28 : settings.maxAccounts === 28 ? 24 : 20}`);
         if (!settings.onlyDirectRoutes) suggestions.push('切换到「仅直接路由」');
         if (!settings.useJitoBundle) suggestions.push('启用 Jito Bundle');
-        toast({ title: '⚠️ 交易过大（超过 1232 bytes）', description: `请在高级设置中尝试：${suggestions.join('、')}`, variant: 'destructive' });
+        toast({ title: '交易过大（超过 1232 bytes）', description: `请在高级设置中尝试：${suggestions.join('、')}`, variant: 'destructive' });
       } else {
         toast({ title: '闪电贷执行失败', description: error.message || '发生未知错误', variant: 'destructive' });
       }
@@ -189,13 +190,13 @@ export function LeveragePanel({ positionInfo, vaultConfig, selectedPositionId, o
     <div className="space-y-4">
       {/* Context */}
       {positionInfo && (
-        <div className="text-xs text-slate-400">
+        <div className="text-xs text-muted-foreground">
           当前: {vaultConfig.name} #{selectedPositionId}
         </div>
       )}
 
       {/* Amount */}
-      <div className="p-4 rounded-lg bg-slate-950/50 border border-slate-800">
+      <div className="p-4 rounded-lg bg-background/50 border border-border">
         <AmountInput
           label={`Flash Borrow 数量 (${vaultConfig.debtToken})`}
           value={amount}
@@ -235,14 +236,17 @@ export function LeveragePanel({ positionInfo, vaultConfig, selectedPositionId, o
 
       {/* Warning */}
       {publicKey && amount && (
-        <div className="p-3 rounded-lg bg-yellow-950/20 border border-yellow-800/50">
-          <p className="text-xs text-yellow-400 mb-1">⚠️ 注意事项:</p>
-          <ul className="list-disc list-inside space-y-0.5 ml-2 text-xs text-yellow-300/80">
-            <li>Flash Loan 原子操作，要么全部成功，要么全部失败</li>
-            <li>确保钱包有足够的 SOL 支付交易费（约 0.001-0.005 SOL）</li>
-            <li>交易不可逆，请仔细检查参数</li>
-          </ul>
-        </div>
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle className="text-xs">注意事项</AlertTitle>
+          <AlertDescription>
+            <ul className="list-disc list-inside space-y-0.5 text-xs text-yellow-300/80">
+              <li>Flash Loan 原子操作，要么全部成功，要么全部失败</li>
+              <li>确保钱包有足够的 SOL 支付交易费（约 0.001-0.005 SOL）</li>
+              <li>交易不可逆，请仔细检查参数</li>
+            </ul>
+          </AlertDescription>
+        </Alert>
       )}
     </div>
   );

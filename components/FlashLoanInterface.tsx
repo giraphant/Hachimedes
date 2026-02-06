@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletButton } from '@/components/WalletButton';
 import { Card, CardContent } from '@/components/ui/card';
-import { Zap } from 'lucide-react';
+import { Zap, RefreshCw, Target } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getVaultConfig, setDiscoveredVaults, DEFAULT_VAULT_ID } from '@/lib/vaults';
 import { discoverAllVaults, onVaultsRefreshed, DiscoveredVault } from '@/lib/vault-discovery';
@@ -326,12 +326,12 @@ export function FlashLoanInterface() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
       {/* Header */}
-      <div className="border-b border-slate-800">
+      <div className="border-b border-border">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Zap className="h-6 w-6 text-green-500" />
-              <h1 className="text-2xl font-bold text-white">Hachimedes</h1>
+              <h1 className="text-2xl font-bold text-foreground">Hachimedes</h1>
             </div>
             <WalletButton />
           </div>
@@ -342,34 +342,44 @@ export function FlashLoanInterface() {
       <div className="container mx-auto px-4 py-8">
         {!publicKey ? (
           <div className="max-w-3xl mx-auto">
-            <Card className="bg-slate-900/50 border-slate-800">
+            <Card className="border-border bg-card">
               <CardContent className="p-12 text-center space-y-6">
                 <div className="flex justify-center">
-                  <Zap className="h-16 w-16 text-green-500" />
+                  <div className="rounded-full bg-green-500/10 p-4">
+                    <Zap className="h-12 w-12 text-green-500" />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <h2 className="text-3xl font-bold text-white">给我一个杠杆，我能撬动整个木星</h2>
-                  <p className="text-slate-400 text-lg">一键闪电贷操作 · 单笔交易完成加/去杠杆 · 安全高效</p>
+                <div className="space-y-3">
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-green-400 via-emerald-300 to-cyan-400 bg-clip-text text-transparent">
+                    给我一个杠杆，我能撬动整个木星
+                  </h2>
+                  <p className="text-muted-foreground text-lg">一键闪电贷操作 · 单笔交易完成加/去杠杆 · 安全高效</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6">
-                  <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
-                    <div className="text-3xl mb-2">⚡</div>
-                    <div className="font-semibold text-white mb-1">Flash Loan</div>
-                    <div className="text-xs text-slate-400">零成本借贷</div>
-                  </div>
-                  <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
-                    <div className="text-3xl mb-2">🔄</div>
-                    <div className="font-semibold text-white mb-1">自动 Swap</div>
-                    <div className="text-xs text-slate-400">Jupiter 聚合</div>
-                  </div>
-                  <div className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
-                    <div className="text-3xl mb-2">🎯</div>
-                    <div className="font-semibold text-white mb-1">一键完成</div>
-                    <div className="text-xs text-slate-400">原子操作</div>
-                  </div>
+                  <Card className="bg-secondary border-border">
+                    <CardContent className="p-4 text-center">
+                      <Zap className="h-8 w-8 text-cyan-400 mx-auto mb-2" />
+                      <div className="font-semibold text-foreground mb-1">Flash Loan</div>
+                      <div className="text-xs text-muted-foreground">零成本借贷</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-secondary border-border">
+                    <CardContent className="p-4 text-center">
+                      <RefreshCw className="h-8 w-8 text-purple-400 mx-auto mb-2" />
+                      <div className="font-semibold text-foreground mb-1">自动 Swap</div>
+                      <div className="text-xs text-muted-foreground">Jupiter 聚合</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-secondary border-border">
+                    <CardContent className="p-4 text-center">
+                      <Target className="h-8 w-8 text-emerald-400 mx-auto mb-2" />
+                      <div className="font-semibold text-foreground mb-1">一键完成</div>
+                      <div className="text-xs text-muted-foreground">原子操作</div>
+                    </CardContent>
+                  </Card>
                 </div>
                 <div className="pt-6">
-                  <p className="text-slate-500 mb-4">请先连接钱包开始使用</p>
+                  <p className="text-muted-foreground mb-4">请先连接钱包开始使用</p>
                 </div>
               </CardContent>
             </Card>

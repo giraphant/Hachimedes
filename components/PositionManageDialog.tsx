@@ -399,13 +399,13 @@ export function PositionManageDialog({
               <Label>
                 金额 ({operationType === 'deposit' || operationType === 'withdraw' ? getVaultConfig(vaultId).collateralToken : getVaultConfig(vaultId).debtToken})
               </Label>
-              <div className="text-xs text-slate-400">
+              <div className="text-xs text-muted-foreground">
                 {isLoadingBalances ? (
                   <span>加载中...</span>
                 ) : (
                   <span>
                     可用: {' '}
-                    <span className="font-mono text-slate-300">
+                    <span className="font-mono text-foreground">
                       {maxAmount.toFixed(4)}
                     </span>
                   </span>
@@ -447,7 +447,7 @@ export function PositionManageDialog({
                 disabled={maxAmount === 0}
                 className="w-full"
               />
-              <div className="flex justify-between text-xs text-slate-500">
+              <div className="flex justify-between text-xs text-muted-foreground">
                 <span>0</span>
                 <span>{maxAmount > 0 ? (maxAmount * 0.5).toFixed(2) : '0.00'}</span>
                 <span>{maxAmount > 0 ? maxAmount.toFixed(2) : '0.00'}</span>
@@ -455,27 +455,27 @@ export function PositionManageDialog({
               {maxAmount === 0 && (
                 <div className="text-xs text-amber-400 text-center">
                   {operationType === 'deposit' || operationType === 'repay'
-                    ? '⚠️ 钱包余额不足'
-                    : '⚠️ 当前仓位无法进行此操作'}
+                    ? '钱包余额不足'
+                    : '当前仓位无法进行此操作'}
                 </div>
               )}
             </div>
           </div>
 
           {/* 当前状态 */}
-          <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700 space-y-2">
-            <div className="text-sm font-medium text-slate-300">当前状态</div>
+          <div className="p-3 rounded-lg bg-secondary border border-border space-y-2">
+            <div className="text-sm font-medium text-foreground/80">当前状态</div>
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
-                <div className="text-slate-400">抵押品</div>
+                <div className="text-muted-foreground">抵押品</div>
                 <div className="font-mono">{positionInfo.collateralAmountUi.toFixed(4)} {getVaultConfig(vaultId).collateralToken}</div>
               </div>
               <div>
-                <div className="text-slate-400">债务</div>
+                <div className="text-muted-foreground">债务</div>
                 <div className="font-mono">{positionInfo.debtAmountUi.toFixed(2)} {getVaultConfig(vaultId).debtToken}</div>
               </div>
               <div>
-                <div className="text-slate-400">LTV</div>
+                <div className="text-muted-foreground">LTV</div>
                 <div className="font-mono">{positionInfo.ltv?.toFixed(2) || 'N/A'}%</div>
               </div>
             </div>
@@ -487,19 +487,19 @@ export function PositionManageDialog({
               <div className="text-sm font-medium text-blue-300">预测状态</div>
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
-                  <div className="text-slate-400">抵押品</div>
+                  <div className="text-muted-foreground">抵押品</div>
                   <div className="font-mono text-blue-300">
                     {predictedValues.newCollateral.toFixed(4)} {getVaultConfig(vaultId).collateralToken}
                   </div>
                 </div>
                 <div>
-                  <div className="text-slate-400">债务</div>
+                  <div className="text-muted-foreground">债务</div>
                   <div className="font-mono text-blue-300">
                     {predictedValues.newDebt.toFixed(2)} {getVaultConfig(vaultId).debtToken}
                   </div>
                 </div>
                 <div>
-                  <div className="text-slate-400">LTV</div>
+                  <div className="text-muted-foreground">LTV</div>
                   <div
                     className={`font-mono ${
                       predictedValues.newLtv > 82
@@ -515,7 +515,7 @@ export function PositionManageDialog({
               </div>
               {predictedValues.newLtv > 82 && (
                 <div className="text-xs text-red-400 mt-2">
-                  ⚠️ 警告：新 LTV 超过最大值（82%），可能会被清算！
+                  警告：新 LTV 超过最大值（82%），可能会被清算！
                 </div>
               )}
             </div>

@@ -27,9 +27,9 @@ export function AmountInput({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <Label className="text-slate-300">{label}</Label>
-        <div className="text-xs text-slate-400">
-          {maxLabel}: <span className="font-mono text-slate-300">{maxAmount.toFixed(4)}</span>
+        <Label className="text-foreground/80">{label}</Label>
+        <div className="text-xs text-muted-foreground">
+          {maxLabel}: <span className="font-mono text-foreground">{maxAmount.toFixed(4)}</span>
         </div>
       </div>
 
@@ -39,7 +39,7 @@ export function AmountInput({
           placeholder="0.00"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="bg-slate-900 border-slate-700 text-white flex-1"
+          className="bg-background border-border text-foreground flex-1"
           step={step}
           max={maxAmount}
           disabled={disabled}
@@ -69,7 +69,7 @@ export function AmountInput({
           disabled={maxAmount === 0 || disabled}
           className="w-full"
         />
-        <div className="flex justify-between text-xs text-slate-500">
+        <div className="flex justify-between text-xs text-muted-foreground">
           <span>0</span>
           <span>{maxAmount > 0 ? (maxAmount * 0.5).toFixed(2) : '0.00'}</span>
           <span>{maxAmount > 0 ? maxAmount.toFixed(2) : '0.00'}</span>

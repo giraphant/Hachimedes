@@ -41,10 +41,10 @@ export function AdvancedSettings({
   };
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg bg-slate-900/30 border border-slate-700/40">
+    <div className="flex items-center justify-between p-3 rounded-lg bg-secondary border border-border">
       <div className="flex items-center gap-2">
-        <SlidersHorizontal className="h-4 w-4 text-slate-400" />
-        <span className="text-sm text-slate-300">高级设置</span>
+        <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm text-foreground/80">高级设置</span>
       </div>
       <Popover>
         <PopoverTrigger asChild>
@@ -52,10 +52,10 @@ export function AdvancedSettings({
             滑点: {(slippageBps / 100).toFixed(2)}%
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80 bg-slate-900 border-slate-700 max-h-[85vh] overflow-y-auto">
+        <PopoverContent className="w-80 bg-popover border-border max-h-[85vh] overflow-y-auto">
           <div className="space-y-3">
             <div className="space-y-1 pb-2">
-              <h4 className="font-medium text-white flex items-center gap-2 text-sm">
+              <h4 className="font-medium text-foreground flex items-center gap-2 text-sm">
                 <SlidersHorizontal className="h-4 w-4" />
                 交易设置
               </h4>
@@ -63,11 +63,11 @@ export function AdvancedSettings({
 
             {/* Slippage */}
             <div className="space-y-2">
-              <Label className="text-slate-300 text-xs">滑点容忍度</Label>
+              <Label className="text-foreground/80 text-xs">滑点容忍度</Label>
               <div className="flex gap-1.5">
                 <Button type="button" variant={slippageBps === 5 ? 'default' : 'outline'} size="sm" onClick={() => onChange({ slippageBps: 5 })} className="flex-1 text-xs h-8 rounded-lg">0.05%</Button>
                 <Button type="button" variant={slippageBps === 10 ? 'default' : 'outline'} size="sm" onClick={() => onChange({ slippageBps: 10 })} className="flex-1 text-xs h-8 rounded-lg">0.1%</Button>
-                <div className="flex-1 flex items-center gap-1 bg-slate-800/50 rounded-lg px-2 border border-slate-700">
+                <div className="flex-1 flex items-center gap-1 bg-secondary rounded-lg px-2 border border-border">
                   <Input
                     type="number"
                     value={slippageBps / 100 || ''}
@@ -77,17 +77,17 @@ export function AdvancedSettings({
                       if (!isNaN(value) && value >= 0 && value <= 5000) onChange({ slippageBps: Math.round(value) });
                       else if (e.target.value === '') onChange({ slippageBps: 0 });
                     }}
-                    className="bg-transparent border-0 text-white text-xs text-center w-full p-0 h-6 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-slate-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="bg-transparent border-0 text-foreground text-xs text-center w-full p-0 h-6 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     step="0.1" min="0" max="50"
                   />
-                  <span className="text-xs text-slate-400">%</span>
+                  <span className="text-xs text-muted-foreground">%</span>
                 </div>
               </div>
             </div>
 
             {/* Mode */}
             <div className="space-y-2">
-              <Label className="text-slate-300 text-xs">Mode</Label>
+              <Label className="text-foreground/80 text-xs">Mode</Label>
               <div className="flex gap-1.5">
                 <Button type="button" variant={!useJitoBundle ? 'default' : 'outline'} size="sm" onClick={() => onChange({ useJitoBundle: false })} className="flex-1 text-xs h-8">Flash Loan</Button>
                 <Button type="button" variant={useJitoBundle ? 'default' : 'outline'} size="sm" onClick={() => onChange({ useJitoBundle: true })} className="flex-1 text-xs h-8">Jito Bundle</Button>
@@ -97,8 +97,8 @@ export function AdvancedSettings({
             {/* Priority fee */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-slate-300 text-xs">优先费用</Label>
-                <span className="text-xs text-slate-500">
+                <Label className="text-foreground/80 text-xs">优先费用</Label>
+                <span className="text-xs text-muted-foreground">
                   {priorityFee === 'default' && '默认'}
                   {priorityFee === 'fast' && '快'}
                   {priorityFee === 'turbo' && '极速'}
@@ -116,8 +116,8 @@ export function AdvancedSettings({
             {/* Route type */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-slate-300 text-xs">路由类型</Label>
-                <span className="text-xs text-slate-500">{onlyDirectRoutes ? '直接' : '智能'}</span>
+                <Label className="text-foreground/80 text-xs">路由类型</Label>
+                <span className="text-xs text-muted-foreground">{onlyDirectRoutes ? '直接' : '智能'}</span>
               </div>
               <div className="flex gap-1.5">
                 <Button type="button" variant={!onlyDirectRoutes ? 'default' : 'outline'} size="sm" onClick={() => onChange({ onlyDirectRoutes: false })} className="flex-1 text-xs h-8">智能路由</Button>
@@ -128,8 +128,8 @@ export function AdvancedSettings({
             {/* DEX selection */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-slate-300 text-xs">DEX 限制</Label>
-                <span className="text-xs text-slate-500">{selectedDexes.length === 0 ? '自动' : selectedDexes.length}</span>
+                <Label className="text-foreground/80 text-xs">DEX 限制</Label>
+                <span className="text-xs text-muted-foreground">{selectedDexes.length === 0 ? '自动' : selectedDexes.length}</span>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 {['Orca', 'Raydium', 'Whirlpool', 'Meteora'].map((dex) => (
@@ -141,15 +141,15 @@ export function AdvancedSettings({
             {/* Max accounts */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-slate-300 text-xs">最大账户数</Label>
-                <span className="text-xs text-slate-500">{maxAccounts}</span>
+                <Label className="text-foreground/80 text-xs">最大账户数</Label>
+                <span className="text-xs text-muted-foreground">{maxAccounts}</span>
               </div>
               <div className="flex gap-1.5">
                 {[32, 28, 24, 20].map((value) => (
                   <Button key={value} type="button" variant={maxAccounts === value ? 'default' : 'outline'} size="sm" onClick={() => onChange({ maxAccounts: value })} className="flex-1 text-xs h-8">{value}</Button>
                 ))}
               </div>
-              <p className="text-xs text-slate-500">交易过大时降低此值 (32→28→24→20)</p>
+              <p className="text-xs text-muted-foreground">交易过大时降低此值 (32→28→24→20)</p>
             </div>
           </div>
         </PopoverContent>
